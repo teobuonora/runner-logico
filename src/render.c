@@ -3,45 +3,51 @@
 #include <stdio.h>
 #include <string.h>
 
-/* ---------- cores ---------- */
+/* ============================================================
+ * PALETA VISUAL
+ * ============================================================ */
 
-static const Color COR_FUNDO = {
-    247, 247, 242, 255
-};
+static const Color COR_CEU_TOPO     = { 28, 31, 72, 255 };
+static const Color COR_CEU_BASE     = { 116, 67, 118, 255 };
+static const Color COR_SOL          = { 255, 205, 92, 255 };
+static const Color COR_SOL_BRILHO   = { 255, 218, 125, 55 };
 
-static const Color COR_PAINEL = {
-    38, 38, 48, 255
-};
+static const Color COR_MONTANHA_1   = { 66, 49, 92, 255 };
+static const Color COR_MONTANHA_2   = { 48, 42, 72, 255 };
+static const Color COR_MONTANHA_3   = { 35, 35, 55, 255 };
 
-static const Color COR_TEXTO = {
-    45, 45, 55, 255
-};
+static const Color COR_CHAO         = { 31, 31, 45, 255 };
+static const Color COR_CHAO_TOPO    = { 231, 134, 74, 255 };
+static const Color COR_CHAO_LUZ     = { 91, 78, 98, 255 };
 
-static const Color COR_VERDE = {
-    46, 160, 90, 255
-};
+static const Color COR_PAINEL       = { 28, 30, 44, 245 };
+static const Color COR_PAINEL_CLARO = { 47, 50, 68, 245 };
+static const Color COR_TEXTO        = { 241, 242, 248, 255 };
+static const Color COR_TEXTO_FRACO  = { 184, 188, 204, 255 };
 
-static const Color COR_VERMELHO = {
-    220, 70, 70, 255
-};
+static const Color COR_VERDE        = { 75, 205, 132, 255 };
+static const Color COR_VERDE_ESCURO = { 31, 121, 79, 255 };
+static const Color COR_VERMELHO     = { 238, 83, 94, 255 };
+static const Color COR_AZUL         = { 74, 151, 255, 255 };
+static const Color COR_CIANO        = { 69, 220, 224, 255 };
+static const Color COR_AMARELO      = { 255, 207, 79, 255 };
+static const Color COR_LARANJA      = { 239, 127, 58, 255 };
+static const Color COR_ROXO         = { 180, 100, 230, 255 };
 
-static const Color COR_AZUL = {
-    70, 120, 255, 255
-};
+/* ============================================================
+ * AUXILIARES
+ * ============================================================ */
 
-static const Color COR_AMARELO = {
-    250, 200, 50, 255
-};
+static Color misturaCor(Color a, Color b, float t) {
+    Color resultado;
 
-static const Color COR_ROXO = {
-    150, 90, 220, 255
-};
+    resultado.r = (unsigned char)(a.r + (b.r - a.r) * t);
+    resultado.g = (unsigned char)(a.g + (b.g - a.g) * t);
+    resultado.b = (unsigned char)(a.b + (b.b - a.b) * t);
+    resultado.a = (unsigned char)(a.a + (b.a - a.a) * t);
 
-static const Color COR_CINZA = {
-    110, 110, 120, 255
-};
-
-/* ---------- auxiliares ---------- */
+    return resultado;
+}
 
 static void textoCentro(
     const char *texto,
@@ -50,18 +56,16 @@ static void textoCentro(
     int tamanho,
     Color cor
 ) {
-    int largura = MeasureText(texto, tamanho);
-
     DrawText(
         texto,
-        centroX - largura / 2,
+        centroX - MeasureText(texto, tamanho) / 2,
         y,
         tamanho,
         cor
     );
 }
 
-static void desenhaPainel(
+static void painel(
     int x,
     int y,
     int largura,
@@ -81,72 +85,59 @@ static void desenhaPainel(
     DrawRectangleLinesEx(area, espessura, borda);
 }
 
-/* ---------- cenário ---------- */
+static void linhaBrilho(
+    Vector2 inicio,
+    Vector2 fim,
+    float espessura,
+    Color cor
+) {
+    Color brilho = cor;
+    brilho.a = 55;
 
-static void desenhaCenario(const Mundo *m) {
-    ClearBackground(COR_FUNDO);
+    DrawLineEx(inicio, fim, espessura + 5.0f, brilho);
+    DrawLineEx(inicio, fim, espessura, cor);
+}
 
-    /*
-     * Nuvens com paralaxe.
-     */
-    for (int i = 0; i < 5; i++) {
-        float x = fmodf(
-            i * 270.0f - m->distancia * 0.12f,
-            LARGURA_TELA + 140.0f
-        );
+static void circuloBrilho(
+    int x,
+    int y,
+    float raio,
+    Color cor
+) {
+    Color brilho = cor;
+    brilho.a = 45;
 
-        if (x < 0.0f) {
-            x += LARGURA_TELA + 140.0f;
-        }
+    DrawCircle(x, y, raio + 7.0f, brilho);
+    DrawCircle(x, y, raio, cor);
+}
 
-        x -= 70.0f;
+/* ============================================================
+ * CENÁRIO
+ * ============================================================ */
 
-        float y =
-            80.0f +
-            (i % 3) * 38.0f;
+static void desenhaCeu(void) {
+    const int faixas = 60;
+    const int alturaFaixa = (int)CHAO_Y / faixas + 1;
+
+    for (int i = 0; i < faixas; i++) {
+        float t = (float)i / (float)(faixas - 1);
+        Color cor = misturaCor(COR_CEU_TOPO, COR_CEU_BASE, t);
 
         DrawRectangle(
-            (int)x,
-            (int)y,
-            70,
-            14,
-            (Color){ 225, 228, 235, 255 }
-        );
-
-        DrawRectangle(
-            (int)x + 14,
-            (int)y - 10,
-            40,
-            12,
-            (Color){ 225, 228, 235, 255 }
+            0,
+            i * alturaFaixa,
+            LARGURA_TELA,
+            alturaFaixa + 1,
+            cor
         );
     }
+}
 
-    /*
-     * Chão.
-     */
-    DrawRectangle(
-        0,
-        (int)CHAO_Y,
-        LARGURA_TELA,
-        ALTURA_TELA - (int)CHAO_Y,
-        COR_PAINEL
-    );
-
-    DrawRectangle(
-        0,
-        (int)CHAO_Y,
-        LARGURA_TELA,
-        3,
-        (Color){ 90, 90, 100, 255 }
-    );
-
-    /*
-     * Pontos que dão sensação de movimento.
-     */
-    for (int i = 0; i < 40; i++) {
+static void desenhaEstrelas(const Mundo *m) {
+    for (int i = 0; i < 28; i++) {
+        float baseX = (float)((i * 83 + 43) % LARGURA_TELA);
         float x = fmodf(
-            i * 47.0f - m->distancia,
+            baseX - m->distancia * 0.015f,
             (float)LARGURA_TELA
         );
 
@@ -154,22 +145,314 @@ static void desenhaCenario(const Mundo *m) {
             x += LARGURA_TELA;
         }
 
-        DrawRectangle(
+        int y = 28 + (i * 47) % 185;
+        float raio = (i % 4 == 0) ? 1.8f : 1.0f;
+
+        DrawCircle(
             (int)x,
-            (int)CHAO_Y + 8 + (i % 3) * 3,
-            6,
-            2,
-            (Color){ 90, 90, 100, 255 }
+            y,
+            raio,
+            (Color){ 241, 232, 220, 185 }
         );
     }
 }
 
-/* ---------- jogador ---------- */
+static void desenhaSol(void) {
+    DrawCircle(
+        785,
+        126,
+        63.0f,
+        COR_SOL_BRILHO
+    );
+
+    DrawCircle(
+        785,
+        126,
+        44.0f,
+        COR_SOL
+    );
+
+    DrawCircle(
+        770,
+        111,
+        13.0f,
+        (Color){ 255, 230, 151, 130 }
+    );
+}
+
+static void desenhaNuvem(
+    float x,
+    float y,
+    float escala
+) {
+    Color sombra = { 93, 75, 112, 125 };
+    Color nuvem = { 207, 191, 213, 185 };
+
+    DrawEllipse(
+        (int)x + 28,
+        (int)y + 10,
+        35.0f * escala,
+        10.0f * escala,
+        sombra
+    );
+
+    DrawCircle(
+        (int)x,
+        (int)y,
+        15.0f * escala,
+        nuvem
+    );
+
+    DrawCircle(
+        (int)x + (int)(20.0f * escala),
+        (int)y - (int)(8.0f * escala),
+        21.0f * escala,
+        nuvem
+    );
+
+    DrawCircle(
+        (int)x + (int)(43.0f * escala),
+        (int)y,
+        17.0f * escala,
+        nuvem
+    );
+
+    DrawRectangle(
+        (int)x,
+        (int)y,
+        (int)(43.0f * escala),
+        (int)(17.0f * escala),
+        nuvem
+    );
+}
+
+static void desenhaNuvens(const Mundo *m) {
+    for (int i = 0; i < 5; i++) {
+        float ciclo = LARGURA_TELA + 240.0f;
+
+        float x = fmodf(
+            i * 245.0f - m->distancia * 0.07f,
+            ciclo
+        );
+
+        if (x < 0.0f) {
+            x += ciclo;
+        }
+
+        x -= 100.0f;
+
+        float y = 72.0f + (float)((i * 43) % 105);
+        float escala = 0.75f + (float)(i % 3) * 0.12f;
+
+        desenhaNuvem(x, y, escala);
+    }
+}
+
+static void desenhaMontanhas(
+    const Mundo *m,
+    float velocidade,
+    int baseY,
+    int altura,
+    int largura,
+    Color cor
+) {
+    float deslocamento = fmodf(
+        m->distancia * velocidade,
+        (float)largura
+    );
+
+    for (int i = -2; i < LARGURA_TELA / largura + 3; i++) {
+        float x = i * largura - deslocamento;
+
+        Vector2 esquerda = {
+            x,
+            (float)baseY
+        };
+
+        Vector2 pico = {
+            x + largura * 0.5f,
+            (float)(baseY - altura)
+        };
+
+        Vector2 direita = {
+            x + largura,
+            (float)baseY
+        };
+
+        DrawTriangle(
+            esquerda,
+            pico,
+            direita,
+            cor
+        );
+    }
+}
+
+static void desenhaEstruturasTecnologicas(const Mundo *m) {
+    float deslocamento = fmodf(
+        m->distancia * 0.18f,
+        230.0f
+    );
+
+    for (int i = -1; i < 6; i++) {
+        float x = i * 230.0f - deslocamento;
+        int altura = 35 + (i & 1) * 24;
+
+        DrawRectangle(
+            (int)x,
+            (int)CHAO_Y - altura,
+            10,
+            altura,
+            (Color){ 41, 40, 59, 255 }
+        );
+
+        DrawRectangle(
+            (int)x - 7,
+            (int)CHAO_Y - altura,
+            24,
+            5,
+            COR_MONTANHA_3
+        );
+
+        DrawCircle(
+            (int)x + 5,
+            (int)CHAO_Y - altura - 6,
+            5.0f,
+            (Color){ 82, 155, 190, 160 }
+        );
+    }
+}
+
+static void desenhaChao(const Mundo *m) {
+    DrawRectangle(
+        0,
+        (int)CHAO_Y,
+        LARGURA_TELA,
+        ALTURA_TELA - (int)CHAO_Y,
+        COR_CHAO
+    );
+
+    DrawRectangle(
+        0,
+        (int)CHAO_Y,
+        LARGURA_TELA,
+        4,
+        COR_CHAO_TOPO
+    );
+
+    DrawRectangle(
+        0,
+        (int)CHAO_Y + 4,
+        LARGURA_TELA,
+        3,
+        (Color){ 105, 57, 74, 255 }
+    );
+
+    for (int i = 0; i < 28; i++) {
+        float x = fmodf(
+            i * 52.0f - m->distancia,
+            (float)LARGURA_TELA
+        );
+
+        if (x < 0.0f) {
+            x += LARGURA_TELA;
+        }
+
+        int y = (int)CHAO_Y + 14 + (i % 4) * 9;
+        int largura = 11 + (i % 3) * 8;
+
+        DrawRectangle(
+            (int)x,
+            y,
+            largura,
+            2,
+            COR_CHAO_LUZ
+        );
+    }
+
+    for (int i = 0; i < 12; i++) {
+        float x = fmodf(
+            i * 95.0f - m->distancia * 1.25f,
+            (float)LARGURA_TELA
+        );
+
+        if (x < 0.0f) {
+            x += LARGURA_TELA;
+        }
+
+        DrawLineEx(
+            (Vector2){
+                x,
+                CHAO_Y + 64.0f
+            },
+            (Vector2){
+                x + 28.0f,
+                CHAO_Y + 64.0f
+            },
+            2.0f,
+            (Color){ 63, 61, 81, 255 }
+        );
+    }
+}
+
+static void desenhaCenario(const Mundo *m) {
+    desenhaCeu();
+    desenhaEstrelas(m);
+    desenhaSol();
+    desenhaNuvens(m);
+
+    desenhaMontanhas(
+        m,
+        0.025f,
+        380,
+        135,
+        300,
+        COR_MONTANHA_1
+    );
+
+    desenhaMontanhas(
+        m,
+        0.055f,
+        410,
+        108,
+        230,
+        COR_MONTANHA_2
+    );
+
+    desenhaMontanhas(
+        m,
+        0.105f,
+        440,
+        78,
+        175,
+        COR_MONTANHA_3
+    );
+
+    desenhaEstruturasTecnologicas(m);
+    desenhaChao(m);
+}
+
+/* ============================================================
+ * JOGADOR
+ * ============================================================ */
+
+static void desenhaTurbo(Rectangle r) {
+    DrawTriangle(
+        (Vector2){ r.x + 4.0f, r.y + r.height * 0.45f },
+        (Vector2){ r.x - 27.0f, r.y + r.height * 0.52f },
+        (Vector2){ r.x + 4.0f, r.y + r.height * 0.63f },
+        COR_LARANJA
+    );
+
+    DrawTriangle(
+        (Vector2){ r.x + 3.0f, r.y + r.height * 0.48f },
+        (Vector2){ r.x - 18.0f, r.y + r.height * 0.53f },
+        (Vector2){ r.x + 3.0f, r.y + r.height * 0.58f },
+        COR_AMARELO
+    );
+}
 
 static void desenhaJogador(const Mundo *m) {
-    /*
-     * Pisca durante a invulnerabilidade.
-     */
     if (
         m->invulneravel > 0.0f &&
         ((int)(m->invulneravel * 10.0f) % 2) == 0
@@ -183,164 +466,625 @@ static void desenhaJogador(const Mundo *m) {
     bool arma = m->val.v[PROP_ARMA];
     bool turbo = m->val.v[PROP_TURBO];
 
-    /*
-     * Chama do turbo.
-     */
     if (turbo) {
-        DrawRectangle(
-            (int)r.x - 18,
-            (int)r.y + (int)r.height / 2 - 4,
-            18,
-            8,
-            COR_AMARELO
-        );
+        desenhaTurbo(r);
     }
 
-    /*
-     * Corpo.
-     */
-    DrawRectangleRec(r, COR_VERDE);
+    Color sombra = { 19, 31, 39, 145 };
 
-    if (!m->abaixado) {
-        /*
-         * Cabeça.
-         */
-        DrawRectangle(
-            (int)r.x + 18,
-            (int)r.y - 12,
-            26,
-            20,
+    DrawEllipse(
+        (int)(r.x + 18.0f),
+        (int)CHAO_Y + 3,
+        34.0f,
+        6.0f,
+        sombra
+    );
+
+    if (m->abaixado) {
+        DrawEllipse(
+            (int)(r.x + 18.0f),
+            (int)(r.y + 16.0f),
+            28.0f,
+            14.0f,
+            COR_VERDE_ESCURO
+        );
+
+        DrawRectangleRounded(
+            (Rectangle){
+                r.x + 8.0f,
+                r.y + 3.0f,
+                38.0f,
+                22.0f
+            },
+            0.35f,
+            6,
             COR_VERDE
         );
 
-        /*
-         * Olho.
-         */
-        DrawRectangle(
-            (int)r.x + 34,
-            (int)r.y - 8,
-            6,
-            6,
+        DrawCircle(
+            (int)r.x + 37,
+            (int)r.y + 10,
+            4.0f,
             WHITE
         );
 
-        DrawRectangle(
-            (int)r.x + 37,
-            (int)r.y - 6,
-            3,
-            3,
-            BLACK
+        DrawCircle(
+            (int)r.x + 39,
+            (int)r.y + 10,
+            2.0f,
+            COR_PAINEL
+        );
+    } else {
+        DrawTriangle(
+            (Vector2){
+                r.x + 8.0f,
+                r.y + 30.0f
+            },
+            (Vector2){
+                r.x - 25.0f,
+                r.y + 40.0f
+            },
+            (Vector2){
+                r.x + 10.0f,
+                r.y + 45.0f
+            },
+            COR_VERDE_ESCURO
         );
 
-        /*
-         * Pernas.
-         */
+        DrawEllipse(
+            (int)(r.x + 17.0f),
+            (int)(r.y + 33.0f),
+            23.0f,
+            27.0f,
+            COR_VERDE
+        );
+
+        DrawRectangleRounded(
+            (Rectangle){
+                r.x + 16.0f,
+                r.y - 11.0f,
+                34.0f,
+                25.0f
+            },
+            0.24f,
+            6,
+            COR_VERDE
+        );
+
+        DrawRectangle(
+            (int)r.x + 34,
+            (int)r.y + 5,
+            17,
+            10,
+            COR_VERDE
+        );
+
+        DrawCircle(
+            (int)r.x + 40,
+            (int)r.y - 3,
+            5.0f,
+            WHITE
+        );
+
+        DrawCircle(
+            (int)r.x + 42,
+            (int)r.y - 3,
+            2.5f,
+            COR_PAINEL
+        );
+
+        DrawRectangle(
+            (int)r.x + 42,
+            (int)r.y + 10,
+            8,
+            2,
+            COR_VERDE_ESCURO
+        );
+
+        DrawLineEx(
+            (Vector2){
+                r.x + 20.0f,
+                r.y + 27.0f
+            },
+            (Vector2){
+                r.x + 34.0f,
+                r.y + 32.0f
+            },
+            4.0f,
+            COR_VERDE_ESCURO
+        );
+
         bool passo =
             m->noChao &&
             ((int)(m->tempo * 12.0f) % 2 == 0);
 
-        DrawRectangle(
-            (int)r.x + 6,
-            (int)(r.y + r.height) - (passo ? 4 : 0),
-            10,
-            4,
-            (Color){ 30, 110, 60, 255 }
-        );
+        int perna1 = passo ? 6 : 1;
+        int perna2 = passo ? 1 : 6;
 
         DrawRectangle(
-            (int)r.x + 24,
-            (int)(r.y + r.height) - (passo ? 0 : 4),
-            10,
-            4,
-            (Color){ 30, 110, 60, 255 }
-        );
-    } else {
-        /*
-         * Cabeça abaixada.
-         */
-        DrawRectangle(
-            (int)r.x + 24,
-            (int)r.y + 2,
-            20,
-            14,
+            (int)r.x + 8,
+            (int)(r.y + r.height) - perna1,
+            9,
+            perna1 + 5,
             COR_VERDE
         );
 
         DrawRectangle(
-            (int)r.x + 36,
-            (int)r.y + 5,
-            4,
-            4,
-            BLACK
+            (int)r.x + 26,
+            (int)(r.y + r.height) - perna2,
+            9,
+            perna2 + 5,
+            COR_VERDE_ESCURO
         );
-    }
 
-    /*
-     * Arma.
-     */
-    if (arma) {
         DrawRectangle(
-            (int)(r.x + r.width),
-            (int)(r.y + r.height * 0.4f),
-            16,
-            7,
-            (Color){ 60, 60, 70, 255 }
+            (int)r.x + 5,
+            (int)(r.y + r.height) - 2,
+            15,
+            4,
+            COR_VERDE
+        );
+
+        DrawRectangle(
+            (int)r.x + 23,
+            (int)(r.y + r.height) - 2,
+            15,
+            4,
+            COR_VERDE_ESCURO
         );
     }
 
-    /*
-     * Escudo.
-     */
+    if (arma) {
+        Rectangle armaRetangulo = {
+            r.x + r.width - 1.0f,
+            r.y + r.height * 0.35f,
+            20.0f,
+            8.0f
+        };
+
+        DrawRectangleRounded(
+            armaRetangulo,
+            0.3f,
+            5,
+            (Color){ 64, 69, 90, 255 }
+        );
+
+        DrawRectangle(
+            (int)armaRetangulo.x + 13,
+            (int)armaRetangulo.y + 2,
+            10,
+            4,
+            COR_CIANO
+        );
+    }
+
     if (escudo) {
-        Color corEscudo = COR_AZUL;
-        corEscudo.a = 90;
+        Color preenchimento = COR_AZUL;
+        preenchimento.a = 34;
 
         DrawCircle(
             (int)(r.x + r.width / 2.0f),
             (int)(r.y + r.height / 2.0f),
-            46.0f,
-            corEscudo
+            49.0f,
+            preenchimento
+        );
+
+        DrawCircleLines(
+            (int)(r.x + r.width / 2.0f),
+            (int)(r.y + r.height / 2.0f),
+            49.0f,
+            COR_CIANO
         );
 
         DrawCircleLines(
             (int)(r.x + r.width / 2.0f),
             (int)(r.y + r.height / 2.0f),
             46.0f,
-            COR_AZUL
+            (Color){ 126, 245, 248, 115 }
         );
     }
 }
 
-/* ---------- portão ---------- */
+/* ============================================================
+ * ENTIDADES
+ * ============================================================ */
 
-static void desenhaPortao(const Entidade *e) {
-    Color preenchimento = COR_AZUL;
-    Color borda = COR_AZUL;
+static void desenhaCacto(Rectangle r) {
+    Color sombra = { 24, 70, 62, 255 };
+    Color corpo = { 45, 142, 104, 255 };
+    Color detalhe = { 85, 190, 132, 255 };
 
-    preenchimento.a = 150;
+    DrawEllipse(
+        (int)(r.x + r.width / 2.0f),
+        (int)(r.y + r.height),
+        r.width * 0.68f,
+        5.0f,
+        (Color){ 20, 27, 38, 130 }
+    );
 
-    if (e->avaliado) {
-        if (e->resultado) {
-            preenchimento = COR_VERDE;
-            borda = COR_VERDE;
-        } else {
-            preenchimento = COR_VERMELHO;
-            borda = COR_VERMELHO;
-        }
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + r.width * 0.30f,
+            r.y,
+            r.width * 0.40f,
+            r.height
+        },
+        0.4f,
+        7,
+        corpo
+    );
 
-        preenchimento.a = 130;
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x,
+            r.y + r.height * 0.35f,
+            r.width * 0.42f,
+            8.0f
+        },
+        0.4f,
+        6,
+        sombra
+    );
+
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x,
+            r.y + r.height * 0.22f,
+            7.0f,
+            r.height * 0.28f
+        },
+        0.4f,
+        6,
+        corpo
+    );
+
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + r.width * 0.60f,
+            r.y + r.height * 0.48f,
+            r.width * 0.40f,
+            8.0f
+        },
+        0.4f,
+        6,
+        corpo
+    );
+
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + r.width - 7.0f,
+            r.y + r.height * 0.34f,
+            7.0f,
+            r.height * 0.27f
+        },
+        0.4f,
+        6,
+        corpo
+    );
+
+    DrawLine(
+        (int)(r.x + r.width * 0.5f),
+        (int)r.y + 7,
+        (int)(r.x + r.width * 0.5f),
+        (int)(r.y + r.height - 5.0f),
+        detalhe
+    );
+}
+
+static void desenhaAndarilho(const Entidade *e) {
+    Rectangle r = e->caixa;
+
+    Color corpo =
+        e->vida >= 2
+            ? COR_ROXO
+            : (Color){ 218, 135, 239, 255 };
+
+    Color escuro = { 91, 45, 130, 255 };
+
+    DrawEllipse(
+        (int)(r.x + r.width / 2.0f),
+        (int)(r.y + r.height),
+        r.width * 0.65f,
+        5.0f,
+        (Color){ 20, 26, 36, 130 }
+    );
+
+    DrawRectangleRounded(
+        r,
+        0.35f,
+        7,
+        corpo
+    );
+
+    DrawRectangle(
+        (int)r.x + 5,
+        (int)(r.y + r.height - 8.0f),
+        (int)r.width - 10,
+        8,
+        escuro
+    );
+
+    DrawCircle(
+        (int)r.x + 13,
+        (int)r.y + 15,
+        7.0f,
+        WHITE
+    );
+
+    DrawCircle(
+        (int)r.x + 29,
+        (int)r.y + 15,
+        7.0f,
+        WHITE
+    );
+
+    DrawCircle(
+        (int)r.x + 15,
+        (int)r.y + 16,
+        3.0f,
+        COR_PAINEL
+    );
+
+    DrawCircle(
+        (int)r.x + 27,
+        (int)r.y + 16,
+        3.0f,
+        COR_PAINEL
+    );
+
+    DrawRectangle(
+        (int)r.x + 10,
+        (int)(r.y + r.height),
+        8,
+        4,
+        escuro
+    );
+
+    DrawRectangle(
+        (int)r.x + 25,
+        (int)(r.y + r.height),
+        8,
+        4,
+        escuro
+    );
+}
+
+static void desenhaVoador(const Entidade *e) {
+    Rectangle r = e->caixa;
+
+    bool asaAlta =
+        ((int)(e->anim * 10.0f) % 2) == 0;
+
+    Color corpo = COR_LARANJA;
+    Color asa = { 255, 180, 89, 255 };
+    Color escuro = { 130, 58, 42, 255 };
+
+    DrawEllipse(
+        (int)(r.x + r.width / 2.0f),
+        (int)(r.y + r.height / 2.0f),
+        r.width * 0.5f,
+        r.height * 0.5f,
+        corpo
+    );
+
+    Vector2 p1 = {
+        r.x + 14.0f,
+        r.y + r.height / 2.0f
+    };
+
+    Vector2 p2 = {
+        r.x + 25.0f,
+        r.y + (asaAlta ? -16.0f : 12.0f)
+    };
+
+    Vector2 p3 = {
+        r.x + 37.0f,
+        r.y + r.height / 2.0f
+    };
+
+    DrawTriangle(p1, p2, p3, asa);
+
+    DrawTriangle(
+        (Vector2){
+            r.x + r.width - 2.0f,
+            r.y + r.height * 0.32f
+        },
+        (Vector2){
+            r.x + r.width + 12.0f,
+            r.y + r.height * 0.5f
+        },
+        (Vector2){
+            r.x + r.width - 2.0f,
+            r.y + r.height * 0.68f
+        },
+        escuro
+    );
+
+    DrawCircle(
+        (int)r.x + 10,
+        (int)r.y + 9,
+        5.0f,
+        WHITE
+    );
+
+    DrawCircle(
+        (int)r.x + 9,
+        (int)r.y + 9,
+        2.0f,
+        COR_PAINEL
+    );
+}
+
+static void desenhaPowerUp(const Entidade *e) {
+    Rectangle r = e->caixa;
+
+    Color cor = COR_AMARELO;
+    const char *letra = "E";
+
+    if (e->tipo == ENT_PU_VIDA) {
+        cor = COR_VERMELHO;
+        letra = "+";
     }
 
-    DrawRectangleRec(
-        e->caixa,
-        preenchimento
+    if (e->tipo == ENT_PU_TAUTOLOGIA) {
+        cor = COR_ROXO;
+        letra = "T";
+    }
+
+    int centroX = (int)(r.x + r.width / 2.0f);
+    int centroY = (int)(r.y + r.height / 2.0f);
+
+    Color aura = cor;
+    aura.a = 35;
+
+    DrawCircle(
+        centroX,
+        centroY,
+        25.0f,
+        aura
     );
 
-    DrawRectangleLinesEx(
-        e->caixa,
-        3.0f,
-        borda
+    DrawCircle(
+        centroX,
+        centroY,
+        17.0f,
+        cor
     );
+
+    DrawCircleLines(
+        centroX,
+        centroY,
+        17.0f,
+        WHITE
+    );
+
+    DrawCircleLines(
+        centroX,
+        centroY,
+        21.0f,
+        (Color){ cor.r, cor.g, cor.b, 100 }
+    );
+
+    textoCentro(
+        letra,
+        centroX,
+        centroY - 10,
+        20,
+        WHITE
+    );
+}
+
+/* ============================================================
+ * PORTÃO
+ * ============================================================ */
+
+static void desenhaPortao(const Entidade *e) {
+    Rectangle r = e->caixa;
+
+    Color cor = COR_AZUL;
+
+    if (e->avaliado) {
+        cor = e->resultado
+            ? COR_VERDE
+            : COR_VERMELHO;
+    }
+
+    float colunaLargura = 14.0f;
+    float arcoAltura = 17.0f;
+
+    Color campo = cor;
+    campo.a = e->avaliado ? 70 : 45;
+
+    DrawRectangle(
+        (int)r.x - 8,
+        (int)r.y,
+        (int)colunaLargura,
+        (int)r.height,
+        (Color){ 35, 39, 59, 255 }
+    );
+
+    DrawRectangle(
+        (int)(r.x + r.width + 2.0f),
+        (int)r.y,
+        (int)colunaLargura,
+        (int)r.height,
+        (Color){ 35, 39, 59, 255 }
+    );
+
+    DrawRectangle(
+        (int)r.x - 8,
+        (int)r.y,
+        (int)r.width + 24,
+        (int)arcoAltura,
+        (Color){ 35, 39, 59, 255 }
+    );
+
+    DrawRectangle(
+        (int)r.x + 6,
+        (int)r.y + (int)arcoAltura,
+        (int)r.width - 4,
+        (int)r.height - (int)arcoAltura,
+        campo
+    );
+
+    linhaBrilho(
+        (Vector2){
+            r.x - 1.0f,
+            r.y + 8.0f
+        },
+        (Vector2){
+            r.x - 1.0f,
+            r.y + r.height
+        },
+        2.0f,
+        cor
+    );
+
+    linhaBrilho(
+        (Vector2){
+            r.x + r.width + 9.0f,
+            r.y + 8.0f
+        },
+        (Vector2){
+            r.x + r.width + 9.0f,
+            r.y + r.height
+        },
+        2.0f,
+        cor
+    );
+
+    linhaBrilho(
+        (Vector2){
+            r.x - 1.0f,
+            r.y + 8.0f
+        },
+        (Vector2){
+            r.x + r.width + 9.0f,
+            r.y + 8.0f
+        },
+        2.0f,
+        cor
+    );
+
+    for (int i = 0; i < 5; i++) {
+        float y =
+            r.y +
+            30.0f +
+            i * 28.0f;
+
+        DrawLineEx(
+            (Vector2){
+                r.x + 7.0f,
+                y
+            },
+            (Vector2){
+                r.x + r.width + 1.0f,
+                y + 10.0f
+            },
+            1.0f,
+            (Color){ cor.r, cor.g, cor.b, 90 }
+        );
+    }
 
     Formula formula =
         catalogoFormula(e->formulaId);
@@ -354,146 +1098,51 @@ static void desenhaPortao(const Entidade *e) {
     );
 
     int tamanho = 22;
-    int largura = MeasureText(texto, tamanho) + 20;
+    int largura = MeasureText(texto, tamanho) + 28;
 
     int x =
         (int)(
-            e->caixa.x +
-            e->caixa.width / 2.0f
+            r.x +
+            r.width / 2.0f
         ) -
         largura / 2;
 
     int y =
-        (int)e->caixa.y -
-        34;
+        (int)r.y -
+        41;
 
-    DrawRectangle(
+    painel(
         x,
         y,
         largura,
-        30,
-        WHITE
+        32,
+        COR_PAINEL,
+        cor,
+        2.0f
     );
 
-    DrawRectangleLines(
-        x,
-        y,
-        largura,
-        30,
-        borda
-    );
-
-    DrawText(
+    textoCentro(
         texto,
-        x + 10,
-        y + 4,
+        x + largura / 2,
+        y + 5,
         tamanho,
         COR_TEXTO
     );
 }
 
-/* ---------- entidades ---------- */
-
 static void desenhaEntidade(const Entidade *e) {
-    Rectangle r = e->caixa;
-
     switch (e->tipo) {
         case ENT_CACTO:
-            DrawRectangleRec(
-                r,
-                (Color){ 40, 120, 70, 255 }
-            );
-
-            DrawRectangle(
-                (int)r.x - 6,
-                (int)r.y + 14,
-                8,
-                6,
-                (Color){ 40, 120, 70, 255 }
-            );
-
-            DrawRectangle(
-                (int)(r.x + r.width) - 2,
-                (int)r.y + 22,
-                8,
-                6,
-                (Color){ 40, 120, 70, 255 }
-            );
+            desenhaCacto(e->caixa);
             break;
 
-        case ENT_ANDARILHO: {
-            Color cor =
-                e->vida >= 2
-                    ? COR_ROXO
-                    : (Color){ 190, 120, 220, 255 };
-
-            DrawRectangleRounded(
-                r,
-                0.3f,
-                6,
-                cor
-            );
-
-            DrawRectangle(
-                (int)r.x + 8,
-                (int)r.y + 10,
-                8,
-                8,
-                WHITE
-            );
-
-            DrawRectangle(
-                (int)r.x + 24,
-                (int)r.y + 10,
-                8,
-                8,
-                WHITE
-            );
-
-            DrawRectangle(
-                (int)r.x + 11,
-                (int)r.y + 13,
-                4,
-                4,
-                BLACK
-            );
-
-            DrawRectangle(
-                (int)r.x + 27,
-                (int)r.y + 13,
-                4,
-                4,
-                BLACK
-            );
+        case ENT_ANDARILHO:
+            desenhaAndarilho(e);
             break;
-        }
 
-        case ENT_VOADOR: {
-            bool bateAsa =
-                ((int)(e->anim * 10.0f) % 2) == 0;
-
-            DrawRectangleRec(
-                r,
-                (Color){ 240, 140, 40, 255 }
-            );
-
-            DrawRectangle(
-                (int)r.x + 10,
-                (int)r.y + (bateAsa ? -12 : 20),
-                24,
-                10,
-                (Color){ 210, 110, 20, 255 }
-            );
-
-            DrawRectangle(
-                (int)r.x + 4,
-                (int)r.y + 6,
-                6,
-                6,
-                WHITE
-            );
+        case ENT_VOADOR:
+            desenhaVoador(e);
             break;
-        }
 
         case ENT_PORTAO:
             desenhaPortao(e);
@@ -501,47 +1150,75 @@ static void desenhaEntidade(const Entidade *e) {
 
         case ENT_PU_ENERGIA:
         case ENT_PU_VIDA:
-        case ENT_PU_TAUTOLOGIA: {
-            Color cor = COR_AMARELO;
-            const char *letra = "E";
-
-            if (e->tipo == ENT_PU_VIDA) {
-                cor = COR_VERMELHO;
-                letra = "+";
-            }
-
-            if (e->tipo == ENT_PU_TAUTOLOGIA) {
-                cor = COR_ROXO;
-                letra = "T";
-            }
-
-            DrawCircle(
-                (int)(r.x + r.width / 2.0f),
-                (int)(r.y + r.height / 2.0f),
-                16.0f,
-                cor
-            );
-
-            DrawCircleLines(
-                (int)(r.x + r.width / 2.0f),
-                (int)(r.y + r.height / 2.0f),
-                16.0f,
-                COR_TEXTO
-            );
-
-            textoCentro(
-                letra,
-                (int)(r.x + r.width / 2.0f),
-                (int)r.y + 5,
-                20,
-                WHITE
-            );
+        case ENT_PU_TAUTOLOGIA:
+            desenhaPowerUp(e);
             break;
-        }
     }
 }
 
-/* ---------- tabela-verdade ---------- */
+static void desenhaTiro(const Tiro *tiro) {
+    Rectangle r = tiro->caixa;
+
+    Color brilho = COR_CIANO;
+    brilho.a = 45;
+
+    DrawRectangle(
+        (int)r.x - 8,
+        (int)r.y - 4,
+        (int)r.width + 16,
+        (int)r.height + 8,
+        brilho
+    );
+
+    DrawRectangleRec(
+        r,
+        COR_CIANO
+    );
+
+    DrawRectangle(
+        (int)r.x + 5,
+        (int)r.y + 1,
+        (int)r.width - 5,
+        2,
+        WHITE
+    );
+}
+
+/* ============================================================
+ * HUD
+ * ============================================================ */
+
+static void desenhaCoracao(
+    int x,
+    int y,
+    bool cheio
+) {
+    Color cor =
+        cheio
+            ? COR_VERMELHO
+            : (Color){ 82, 84, 101, 255 };
+
+    DrawCircle(
+        x - 5,
+        y,
+        6.0f,
+        cor
+    );
+
+    DrawCircle(
+        x + 5,
+        y,
+        6.0f,
+        cor
+    );
+
+    DrawTriangle(
+        (Vector2){ (float)x - 11.0f, (float)y + 2.0f },
+        (Vector2){ (float)x + 11.0f, (float)y + 2.0f },
+        (Vector2){ (float)x, (float)y + 14.0f },
+        cor
+    );
+}
 
 static void desenhaTabela(
     const Mundo *m,
@@ -550,79 +1227,65 @@ static void desenhaTabela(
     Formula formula =
         catalogoFormula(portao->formulaId);
 
-    char texto[64];
+    int x = LARGURA_TELA - 190;
+    int y = 79;
+    int largura = 176;
+    int altura = 151;
 
-    formulaParaTexto(
-        &formula,
-        texto,
-        sizeof texto
-    );
-
-    int x = LARGURA_TELA - 184;
-    int y = 52;
-    int largura = 172;
-    int altura = 150;
-
-    DrawRectangle(
+    painel(
         x,
         y,
         largura,
         altura,
-        (Color){ 255, 255, 255, 235 }
-    );
-
-    DrawRectangleLines(
-        x,
-        y,
-        largura,
-        altura,
-        COR_AZUL
+        (Color){ 27, 30, 45, 242 },
+        COR_AZUL,
+        2.0f
     );
 
     DrawText(
         "TABELA-VERDADE",
-        x + 10,
-        y + 5,
-        12,
-        COR_TEXTO
+        x + 13,
+        y + 8,
+        13,
+        COR_AMARELO
     );
 
     DrawText(
-        "P  Q  R |  f",
-        x + 14,
-        y + 22,
+        "P  Q  R  |  f",
+        x + 18,
+        y + 28,
         14,
         COR_TEXTO
     );
 
     DrawLine(
-        x + 8,
-        y + 38,
-        x + largura - 8,
-        y + 38,
-        COR_TEXTO
+        x + 10,
+        y + 45,
+        x + largura - 10,
+        y + 45,
+        (Color){ 102, 108, 132, 255 }
     );
 
     unsigned atual =
         mascaraDeValoracao(m->val);
 
     for (unsigned i = 0; i < 8; i++) {
-        Valoracao valoracao =
+        Valoracao v =
             valoracaoDeMascara(i);
 
         bool resultado =
-            avalia(&formula, valoracao);
+            avalia(&formula, v);
 
         int linhaY =
-            y + 42 + (int)i * 13;
+            y + 49 + (int)i * 12;
 
         if (i == atual) {
             DrawRectangle(
-                x + 6,
+                x + 8,
                 linhaY - 1,
-                largura - 12,
-                13,
-                (Color){ 250, 220, 90, 255 }
+                largura - 16,
+                12,
+                (Color){ 74, 151, 255, 70 }
             );
         }
 
@@ -631,16 +1294,16 @@ static void desenhaTabela(
         snprintf(
             linha,
             sizeof linha,
-            "%c  %c  %c |  %c",
-            valoracao.v[0] ? 'V' : 'F',
-            valoracao.v[1] ? 'V' : 'F',
-            valoracao.v[2] ? 'V' : 'F',
+            "%c  %c  %c  |  %c",
+            v.v[0] ? 'V' : 'F',
+            v.v[1] ? 'V' : 'F',
+            v.v[2] ? 'V' : 'F',
             resultado ? 'V' : 'F'
         );
 
         DrawText(
             linha,
-            x + 14,
+            x + 18,
             linhaY,
             12,
             resultado
@@ -650,13 +1313,10 @@ static void desenhaTabela(
     }
 }
 
-/* ---------- cartões das proposições ---------- */
-
-static void desenhaCartaoProposicao(
+static void desenhaCartao(
     const Mundo *m,
     int indice,
-    int x,
-    int y
+    int x
 ) {
     static const char *poderes[NUM_PROPS] = {
         "ESCUDO",
@@ -665,83 +1325,416 @@ static void desenhaCartaoProposicao(
     };
 
     static const Color cores[NUM_PROPS] = {
-        { 70, 120, 255, 255 },
-        { 230, 180, 40, 255 },
-        { 170, 80, 215, 255 }
+        { 74, 151, 255, 255 },
+        { 255, 207, 79, 255 },
+        { 180, 100, 230, 255 }
     };
-
-    const int largura = 188;
-    const int altura = 52;
 
     bool ligado = m->val.v[indice];
 
     Color fundo =
         ligado
-            ? cores[indice]
-            : (Color){ 60, 60, 72, 255 };
+            ? misturaCor(
+                COR_PAINEL_CLARO,
+                cores[indice],
+                0.35f
+            )
+            : COR_PAINEL_CLARO;
 
-    Color borda =
-        ligado
-            ? WHITE
-            : COR_CINZA;
-
-    desenhaPainel(
+    painel(
         x,
-        y,
-        largura,
-        altura,
+        467,
+        182,
+        58,
         fundo,
-        borda,
+        ligado
+            ? cores[indice]
+            : (Color){ 79, 83, 103, 255 },
         ligado ? 2.0f : 1.0f
     );
 
-    char cabecalho[32];
+    char tecla[8];
 
     snprintf(
-        cabecalho,
-        sizeof cabecalho,
-        "[%d] %s",
-        indice + 1,
-        nomeProp(indice)
+        tecla,
+        sizeof tecla,
+        "%d",
+        indice + 1
     );
 
-    DrawText(
-        cabecalho,
-        x + 10,
-        y + 7,
-        22,
-        WHITE
-    );
-
-    DrawText(
-        poderes[indice],
-        x + 66,
-        y + 10,
-        15,
-        WHITE
-    );
-
-    DrawText(
-        ligado ? "VERDADEIRO" : "FALSO",
-        x + 10,
-        y + 33,
-        13,
+    painel(
+        x + 8,
+        476,
+        32,
+        32,
+        ligado
+            ? cores[indice]
+            : (Color){ 69, 72, 89, 255 },
         ligado
             ? WHITE
-            : (Color){ 200, 200, 210, 255 }
+            : (Color){ 116, 120, 140, 255 },
+        1.0f
     );
 
-    DrawCircle(
-        x + largura - 18,
-        y + altura / 2,
-        8.0f,
+    textoCentro(
+        tecla,
+        x + 24,
+        482,
+        18,
+        WHITE
+    );
+
+    char titulo[40];
+
+    snprintf(
+        titulo,
+        sizeof titulo,
+        "%s  %s",
+        nomeProp(indice),
+        poderes[indice]
+    );
+
+    DrawText(
+        titulo,
+        x + 49,
+        474,
+        16,
+        COR_TEXTO
+    );
+
+    DrawText(
+        ligado
+            ? "VERDADEIRO"
+            : "FALSO",
+        x + 49,
+        497,
+        13,
         ligado
             ? COR_VERDE
-            : (Color){ 120, 120, 130, 255 }
+            : COR_TEXTO_FRACO
+    );
+
+    circuloBrilho(
+        x + 165,
+        496,
+        6.0f,
+        ligado
+            ? cores[indice]
+            : (Color){ 92, 95, 110, 255 }
     );
 }
 
-/* ---------- painel do desafio lógico ---------- */
+static void desenhaHud(
+    const Mundo *m,
+    bool mostraTabela
+) {
+    painel(
+        12,
+        10,
+        208,
+        64,
+        (Color){ 27, 30, 44, 218 },
+        (Color){ 74, 78, 104, 210 },
+        1.0f
+    );
+
+    DrawText(
+        "VIDAS",
+        22,
+        17,
+        12,
+        COR_TEXTO_FRACO
+    );
+
+    for (int i = 0; i < VIDAS_MAX; i++) {
+        desenhaCoracao(
+            29 + i * 27,
+            39,
+            i < m->vidas
+        );
+    }
+
+    DrawText(
+        "ENERGIA",
+        22,
+        57,
+        11,
+        COR_TEXTO_FRACO
+    );
+
+    DrawRectangle(
+        79,
+        58,
+        126,
+        9,
+        (Color){ 66, 69, 86, 255 }
+    );
+
+    Color energia =
+        m->energia < 25.0f
+            ? COR_VERMELHO
+            : COR_AMARELO;
+
+    DrawRectangle(
+        79,
+        58,
+        (int)(
+            126.0f *
+            m->energia /
+            ENERGIA_MAX
+        ),
+        9,
+        energia
+    );
+
+    painel(
+        378,
+        10,
+        204,
+        54,
+        (Color){ 27, 30, 44, 218 },
+        (Color){ 74, 78, 104, 210 },
+        1.0f
+    );
+
+    char texto[96];
+
+    snprintf(
+        texto,
+        sizeof texto,
+        "%d",
+        mundo_pontos(m)
+    );
+
+    textoCentro(
+        texto,
+        LARGURA_TELA / 2,
+        16,
+        27,
+        COR_TEXTO
+    );
+
+    textoCentro(
+        "PONTOS",
+        LARGURA_TELA / 2,
+        45,
+        11,
+        COR_TEXTO_FRACO
+    );
+
+    painel(
+        746,
+        10,
+        202,
+        54,
+        (Color){ 27, 30, 44, 218 },
+        (Color){ 74, 78, 104, 210 },
+        1.0f
+    );
+
+    snprintf(
+        texto,
+        sizeof texto,
+        "PORTOES  %d / %d",
+        m->portoesOk,
+        META_PORTOES
+    );
+
+    textoCentro(
+        texto,
+        847,
+        18,
+        20,
+        COR_CIANO
+    );
+
+    int progresso =
+        (int)(
+            172.0f *
+            m->portoesOk /
+            META_PORTOES
+        );
+
+    DrawRectangle(
+        761,
+        46,
+        172,
+        7,
+        (Color){ 67, 70, 87, 255 }
+    );
+
+    DrawRectangle(
+        761,
+        46,
+        progresso,
+        7,
+        COR_CIANO
+    );
+
+    if (m->sobrecarga > 0.0f) {
+        textoCentro(
+            "SOBRECARGA",
+            LARGURA_TELA / 2,
+            72,
+            17,
+            COR_VERMELHO
+        );
+    }
+
+    if (m->tautologia) {
+        textoCentro(
+            "TAUTOLOGIA ATIVA",
+            LARGURA_TELA / 2,
+            72,
+            17,
+            COR_ROXO
+        );
+    }
+
+    if (
+        !m->decisaoPortao &&
+        m->msgTempo > 0.0f &&
+        m->msg[0] != '\0'
+    ) {
+        painel(
+            280,
+            94,
+            400,
+            38,
+            (Color){ 27, 30, 44, 228 },
+            (Color){ 92, 97, 121, 220 },
+            1.0f
+        );
+
+        textoCentro(
+            m->msg,
+            LARGURA_TELA / 2,
+            102,
+            19,
+            COR_TEXTO
+        );
+    }
+
+    for (int i = 0; i < NUM_PROPS; i++) {
+        desenhaCartao(
+            m,
+            i,
+            12 + i * 190
+        );
+    }
+
+    painel(
+        588,
+        467,
+        360,
+        58,
+        COR_PAINEL,
+        (Color){ 79, 83, 103, 255 },
+        1.0f
+    );
+
+    const Entidade *portao =
+        mundo_proximo_portao(m);
+
+    if (portao != NULL) {
+        Formula formula =
+            catalogoFormula(portao->formulaId);
+
+        char formulaTexto[64];
+
+        formulaParaTexto(
+            &formula,
+            formulaTexto,
+            sizeof formulaTexto
+        );
+
+        if (m->decisaoPortao) {
+            DrawText(
+                "DESAFIO LOGICO EM ANDAMENTO",
+                602,
+                475,
+                15,
+                COR_AMARELO
+            );
+
+            DrawText(
+                "1, 2 e 3 alteram  |  ENTER confirma",
+                602,
+                499,
+                13,
+                COR_TEXTO_FRACO
+            );
+        } else {
+            bool resultado =
+                m->tautologia ||
+                avalia(&formula, m->val);
+
+            char linha[120];
+
+            snprintf(
+                linha,
+                sizeof linha,
+                "PROXIMO: %s",
+                formulaTexto
+            );
+
+            DrawText(
+                linha,
+                602,
+                475,
+                16,
+                COR_TEXTO
+            );
+
+            DrawText(
+                resultado
+                    ? "ESTADO ATUAL: VERDADEIRO"
+                    : "ESTADO ATUAL: FALSO",
+                602,
+                498,
+                13,
+                resultado
+                    ? COR_VERDE
+                    : COR_VERMELHO
+            );
+        }
+
+        if (
+            mostraTabela &&
+            !m->decisaoPortao
+        ) {
+            desenhaTabela(m, portao);
+        }
+    } else {
+        DrawText(
+            "PROXIMO PORTAO",
+            602,
+            475,
+            15,
+            COR_TEXTO
+        );
+
+        DrawText(
+            "Aguardando novo desafio...",
+            602,
+            499,
+            13,
+            COR_TEXTO_FRACO
+        );
+    }
+
+    DrawText(
+        "T: tabela   P: pausa",
+        799,
+        499,
+        11,
+        COR_TEXTO_FRACO
+    );
+}
+
+/* ============================================================
+ * DESAFIO LÓGICO
+ * ============================================================ */
 
 static void desenhaDesafioLogico(const Mundo *m) {
     if (!m->decisaoPortao) {
@@ -755,102 +1748,120 @@ static void desenhaDesafioLogico(const Mundo *m) {
         return;
     }
 
-    /*
-     * Escurece somente a área de jogo.
-     */
     DrawRectangle(
         0,
         0,
         LARGURA_TELA,
         (int)CHAO_Y,
-        (Color){ 20, 22, 34, 165 }
+        (Color){ 12, 14, 28, 180 }
     );
 
-    const int painelX = 230;
-    const int painelY = 100;
-    const int painelLargura = 500;
-    const int painelAltura = 275;
-
-    desenhaPainel(
-        painelX,
-        painelY,
-        painelLargura,
-        painelAltura,
-        (Color){ 30, 32, 46, 250 },
-        COR_AZUL,
+    painel(
+        215,
+        92,
+        530,
+        300,
+        (Color){ 24, 27, 43, 250 },
+        COR_CIANO,
         3.0f
     );
 
     textoCentro(
         "DESAFIO LOGICO",
         LARGURA_TELA / 2,
-        118,
-        28,
+        110,
+        29,
         COR_AMARELO
     );
 
     textoCentro(
-        "Torne a formula verdadeira antes do tempo acabar",
+        "Torne a formula verdadeira",
         LARGURA_TELA / 2,
-        153,
-        15,
-        (Color){ 215, 215, 225, 255 }
+        146,
+        16,
+        COR_TEXTO_FRACO
     );
 
     Formula formula =
         catalogoFormula(portao->formulaId);
 
-    char textoFormula[64];
+    char formulaTexto[64];
 
     formulaParaTexto(
         &formula,
-        textoFormula,
-        sizeof textoFormula
+        formulaTexto,
+        sizeof formulaTexto
     );
 
     int larguraFormula =
-        MeasureText(textoFormula, 38) + 50;
+        MeasureText(formulaTexto, 40) + 60;
 
-    int formulaX =
-        LARGURA_TELA / 2 -
-        larguraFormula / 2;
-
-    desenhaPainel(
-        formulaX,
-        184,
+    painel(
+        LARGURA_TELA / 2 - larguraFormula / 2,
+        178,
         larguraFormula,
-        58,
-        WHITE,
+        62,
+        (Color){ 38, 42, 60, 255 },
         COR_AZUL,
         2.0f
     );
 
     textoCentro(
-        textoFormula,
+        formulaTexto,
         LARGURA_TELA / 2,
-        194,
-        38,
+        188,
+        40,
         COR_TEXTO
     );
 
-    char valores[96];
+    static const Color cores[NUM_PROPS] = {
+        { 74, 151, 255, 255 },
+        { 255, 207, 79, 255 },
+        { 180, 100, 230, 255 }
+    };
 
-    snprintf(
-        valores,
-        sizeof valores,
-        "P = %c       Q = %c       R = %c",
-        m->val.v[PROP_ESCUDO] ? 'V' : 'F',
-        m->val.v[PROP_ARMA] ? 'V' : 'F',
-        m->val.v[PROP_TURBO] ? 'V' : 'F'
-    );
+    for (int i = 0; i < NUM_PROPS; i++) {
+        int x = 310 + i * 115;
+        bool ligado = m->val.v[i];
 
-    textoCentro(
-        valores,
-        LARGURA_TELA / 2,
-        258,
-        22,
-        WHITE
-    );
+        painel(
+            x,
+            258,
+            105,
+            48,
+            ligado
+                ? misturaCor(
+                    COR_PAINEL_CLARO,
+                    cores[i],
+                    0.38f
+                )
+                : COR_PAINEL_CLARO,
+            ligado
+                ? cores[i]
+                : (Color){ 77, 81, 99, 255 },
+            ligado ? 2.0f : 1.0f
+        );
+
+        char valor[24];
+
+        snprintf(
+            valor,
+            sizeof valor,
+            "%s = %c",
+            nomeProp(i),
+            ligado ? 'V' : 'F'
+        );
+
+        textoCentro(
+            valor,
+            x + 52,
+            269,
+            20,
+            ligado
+                ? WHITE
+                : COR_TEXTO_FRACO
+        );
+    }
 
     float proporcao =
         m->tempoDecisaoPortao /
@@ -872,317 +1883,59 @@ static void desenhaDesafioLogico(const Mundo *m) {
         corTempo = COR_AMARELO;
     }
 
-    char textoTempo[32];
+    char tempo[32];
 
     snprintf(
-        textoTempo,
-        sizeof textoTempo,
-        "TEMPO: %.1f s",
+        tempo,
+        sizeof tempo,
+        "%.1f s",
         m->tempoDecisaoPortao
     );
 
     textoCentro(
-        textoTempo,
+        tempo,
         LARGURA_TELA / 2,
-        292,
-        22,
+        316,
+        24,
         corTempo
     );
 
     DrawRectangle(
+        315,
+        347,
         330,
-        324,
-        300,
         12,
-        (Color){ 75, 77, 92, 255 }
+        (Color){ 66, 70, 88, 255 }
     );
 
     DrawRectangle(
-        330,
-        324,
-        (int)(300.0f * proporcao),
+        315,
+        347,
+        (int)(330.0f * proporcao),
         12,
         corTempo
     );
 
     DrawRectangleLines(
+        315,
+        347,
         330,
-        324,
-        300,
         12,
-        WHITE
+        (Color){ 160, 166, 194, 255 }
     );
 
     textoCentro(
         "[1] [2] [3] ALTERAR     [ENTER] CONFIRMAR",
         LARGURA_TELA / 2,
-        347,
-        15,
-        WHITE
+        369,
+        14,
+        COR_TEXTO
     );
 }
 
-/* ---------- HUD ---------- */
-
-static void desenhaHud(
-    const Mundo *m,
-    bool mostraTabela
-) {
-    /*
-     * Vidas.
-     */
-    for (int i = 0; i < VIDAS_MAX; i++) {
-        Vector2 centro = {
-            28.0f + i * 26.0f,
-            26.0f
-        };
-
-        if (i < m->vidas) {
-            DrawCircleV(
-                centro,
-                9.0f,
-                COR_VERMELHO
-            );
-        } else {
-            DrawCircleLinesV(
-                centro,
-                9.0f,
-                (Color){ 170, 170, 175, 255 }
-            );
-        }
-    }
-
-    /*
-     * Energia.
-     */
-    DrawText(
-        "ENERGIA",
-        20,
-        44,
-        12,
-        COR_TEXTO
-    );
-
-    DrawRectangle(
-        20,
-        58,
-        180,
-        12,
-        (Color){ 215, 215, 220, 255 }
-    );
-
-    Color corEnergia =
-        m->energia < 25.0f
-            ? COR_VERMELHO
-            : COR_AMARELO;
-
-    DrawRectangle(
-        20,
-        58,
-        (int)(
-            180.0f *
-            m->energia /
-            ENERGIA_MAX
-        ),
-        12,
-        corEnergia
-    );
-
-    DrawRectangleLines(
-        20,
-        58,
-        180,
-        12,
-        COR_TEXTO
-    );
-
-    if (m->sobrecarga > 0.0f) {
-        DrawText(
-            "SOBRECARGA!",
-            210,
-            56,
-            16,
-            COR_VERMELHO
-        );
-    }
-
-    /*
-     * Pontuação.
-     */
-    char texto[128];
-
-    snprintf(
-        texto,
-        sizeof texto,
-        "PONTOS %d",
-        mundo_pontos(m)
-    );
-
-    textoCentro(
-        texto,
-        LARGURA_TELA / 2,
-        14,
-        28,
-        COR_TEXTO
-    );
-
-    /*
-     * Portões.
-     */
-    snprintf(
-        texto,
-        sizeof texto,
-        "PORTOES %d/%d",
-        m->portoesOk,
-        META_PORTOES
-    );
-
-    DrawText(
-        texto,
-        LARGURA_TELA - MeasureText(texto, 22) - 14,
-        14,
-        22,
-        COR_AZUL
-    );
-
-    if (m->tautologia) {
-        textoCentro(
-            "TAUTOLOGIA ATIVA: o proximo portao abre",
-            LARGURA_TELA / 2,
-            48,
-            16,
-            COR_ROXO
-        );
-    }
-
-    /*
-     * Mensagem temporária.
-     */
-    if (
-        !m->decisaoPortao &&
-        m->msgTempo > 0.0f &&
-        m->msg[0] != '\0'
-    ) {
-        textoCentro(
-            m->msg,
-            LARGURA_TELA / 2,
-            100,
-            24,
-            COR_TEXTO
-        );
-    }
-
-    /*
-     * Cartões inferiores sem as explicações longas.
-     */
-    for (int i = 0; i < NUM_PROPS; i++) {
-        desenhaCartaoProposicao(
-            m,
-            i,
-            20 + i * 198,
-            452
-        );
-    }
-
-    /*
-     * Próximo portão.
-     */
-    const Entidade *portao =
-        mundo_proximo_portao(m);
-
-    if (portao != NULL) {
-        Formula formula =
-            catalogoFormula(portao->formulaId);
-
-        char textoFormula[64];
-
-        formulaParaTexto(
-            &formula,
-            textoFormula,
-            sizeof textoFormula
-        );
-
-        if (m->decisaoPortao) {
-            DrawText(
-                "DESAFIO EM ANDAMENTO",
-                626,
-                454,
-                16,
-                COR_AMARELO
-            );
-
-            DrawText(
-                "Use 1, 2 e 3. ENTER confirma.",
-                626,
-                476,
-                13,
-                WHITE
-            );
-        } else {
-            bool resultadoAtual =
-                m->tautologia ||
-                avalia(&formula, m->val);
-
-            char linha[128];
-
-            snprintf(
-                linha,
-                sizeof linha,
-                "Portao: %s => %s",
-                textoFormula,
-                resultadoAtual
-                    ? "VERDADEIRO"
-                    : "FALSO"
-            );
-
-            DrawText(
-                linha,
-                626,
-                454,
-                16,
-                resultadoAtual
-                    ? COR_VERDE
-                    : COR_VERMELHO
-            );
-        }
-
-        if (
-            mostraTabela &&
-            !m->decisaoPortao
-        ) {
-            desenhaTabela(
-                m,
-                portao
-            );
-        }
-    } else {
-        DrawText(
-            "Prox. portao: em breve...",
-            626,
-            454,
-            16,
-            (Color){ 160, 160, 170, 255 }
-        );
-    }
-
-    DrawText(
-        "~ NAO    & E    | OU",
-        626,
-        494,
-        12,
-        (Color){ 200, 200, 210, 255 }
-    );
-
-    DrawText(
-        "T: tabela-verdade    P: pausa",
-        626,
-        512,
-        12,
-        (Color){ 160, 160, 170, 255 }
-    );
-}
-
-/* ---------- API ---------- */
+/* ============================================================
+ * API PRINCIPAL
+ * ============================================================ */
 
 void render_mundo(
     const Mundo *m,
@@ -1195,10 +1948,7 @@ void render_mundo(
     }
 
     for (int i = 0; i < m->nTiros; i++) {
-        DrawRectangleRec(
-            m->tiros[i].caixa,
-            COR_VERMELHO
-        );
+        desenhaTiro(&m->tiros[i]);
     }
 
     desenhaJogador(m);
@@ -1206,7 +1956,240 @@ void render_mundo(
     desenhaDesafioLogico(m);
 }
 
-/* ---------- telas auxiliares ---------- */
+/* ============================================================
+ * MENU
+ * ============================================================ */
+
+static void desenhaFundoMenu(void) {
+    Mundo demonstracao;
+    memset(&demonstracao, 0, sizeof demonstracao);
+
+    demonstracao.noChao = true;
+    demonstracao.energia = ENERGIA_MAX;
+    demonstracao.vidas = VIDAS_INICIAIS;
+
+    desenhaCenario(&demonstracao);
+
+    DrawRectangle(
+        0,
+        0,
+        LARGURA_TELA,
+        ALTURA_TELA,
+        (Color){ 15, 17, 31, 65 }
+    );
+
+    Rectangle jogador = {
+        88.0f,
+        360.0f,
+        JOGADOR_L,
+        JOGADOR_A
+    };
+
+    DrawTriangle(
+        (Vector2){ jogador.x + 8.0f, jogador.y + 29.0f },
+        (Vector2){ jogador.x - 27.0f, jogador.y + 40.0f },
+        (Vector2){ jogador.x + 10.0f, jogador.y + 45.0f },
+        COR_VERDE_ESCURO
+    );
+
+    DrawEllipse(
+        (int)jogador.x + 17,
+        (int)jogador.y + 32,
+        23.0f,
+        27.0f,
+        COR_VERDE
+    );
+
+    DrawRectangleRounded(
+        (Rectangle){
+            jogador.x + 16.0f,
+            jogador.y - 11.0f,
+            34.0f,
+            25.0f
+        },
+        0.24f,
+        6,
+        COR_VERDE
+    );
+
+    DrawCircle(
+        (int)jogador.x + 40,
+        (int)jogador.y - 3,
+        5.0f,
+        WHITE
+    );
+
+    DrawCircle(
+        (int)jogador.x + 42,
+        (int)jogador.y - 3,
+        2.5f,
+        COR_PAINEL
+    );
+}
+
+void render_menu(void) {
+    desenhaFundoMenu();
+
+    textoCentro(
+        "RUNNER LOGICO",
+        LARGURA_TELA / 2,
+        40,
+        54,
+        COR_TEXTO
+    );
+
+    textoCentro(
+        "CORRA. RACIOCINE. SOBREVIVA.",
+        LARGURA_TELA / 2,
+        101,
+        17,
+        COR_CIANO
+    );
+
+    painel(
+        250,
+        139,
+        460,
+        250,
+        (Color){ 24, 27, 42, 235 },
+        (Color){ 89, 96, 127, 230 },
+        2.0f
+    );
+
+    DrawText(
+        "MOVIMENTO",
+        274,
+        158,
+        17,
+        COR_AMARELO
+    );
+
+    DrawText(
+        "ESPACO / W / SETA CIMA",
+        274,
+        185,
+        15,
+        COR_TEXTO
+    );
+
+    DrawText(
+        "Pular",
+        530,
+        185,
+        15,
+        COR_TEXTO_FRACO
+    );
+
+    DrawText(
+        "SETA BAIXO / S",
+        274,
+        209,
+        15,
+        COR_TEXTO
+    );
+
+    DrawText(
+        "Abaixar ou cair rapido",
+        530,
+        209,
+        15,
+        COR_TEXTO_FRACO
+    );
+
+    DrawText(
+        "X / Z / CTRL",
+        274,
+        233,
+        15,
+        COR_TEXTO
+    );
+
+    DrawText(
+        "Atirar com Q = V",
+        530,
+        233,
+        15,
+        COR_TEXTO_FRACO
+    );
+
+    DrawLine(
+        274,
+        263,
+        686,
+        263,
+        (Color){ 88, 93, 116, 255 }
+    );
+
+    DrawText(
+        "LOGICA",
+        274,
+        277,
+        17,
+        COR_AMARELO
+    );
+
+    DrawText(
+        "[1] P = ESCUDO",
+        274,
+        305,
+        15,
+        COR_AZUL
+    );
+
+    DrawText(
+        "[2] Q = ARMA",
+        435,
+        305,
+        15,
+        COR_AMARELO
+    );
+
+    DrawText(
+        "[3] R = TURBO",
+        565,
+        305,
+        15,
+        COR_ROXO
+    );
+
+    DrawText(
+        "Nos portoes, voce tem 5 segundos para validar a formula.",
+        274,
+        337,
+        14,
+        COR_TEXTO
+    );
+
+    DrawText(
+        "ENTER confirma  |  T tabela  |  P pausa  |  ESC menu",
+        274,
+        363,
+        13,
+        COR_TEXTO_FRACO
+    );
+
+    painel(
+        342,
+        416,
+        276,
+        54,
+        (Color){ 45, 126, 91, 245 },
+        COR_VERDE,
+        2.0f
+    );
+
+    textoCentro(
+        "ENTER PARA JOGAR",
+        LARGURA_TELA / 2,
+        431,
+        22,
+        WHITE
+    );
+}
+
+/* ============================================================
+ * PAUSA E FIM
+ * ============================================================ */
 
 static void fundoEscuro(void) {
     DrawRectangle(
@@ -1214,162 +2197,45 @@ static void fundoEscuro(void) {
         0,
         LARGURA_TELA,
         ALTURA_TELA,
-        (Color){ 20, 20, 28, 225 }
-    );
-}
-
-void render_menu(void) {
-    ClearBackground(COR_FUNDO);
-
-    DrawRectangle(
-        0,
-        0,
-        LARGURA_TELA,
-        ALTURA_TELA,
-        COR_PAINEL
-    );
-
-    textoCentro(
-        "RUNNER LOGICO",
-        LARGURA_TELA / 2,
-        50,
-        56,
-        WHITE
-    );
-
-    textoCentro(
-        "corra, atire e abra os portoes com Logica Proposicional",
-        LARGURA_TELA / 2,
-        118,
-        20,
-        (Color){ 190, 190, 200, 255 }
-    );
-
-    int x = 110;
-    int y = 180;
-
-    DrawText(
-        "CONTROLES",
-        x,
-        y,
-        22,
-        COR_AMARELO
-    );
-
-    DrawText(
-        "ESPACO / SETA CIMA ... pular",
-        x,
-        y + 32,
-        18,
-        WHITE
-    );
-
-    DrawText(
-        "SETA BAIXO ........... abaixar",
-        x,
-        y + 56,
-        18,
-        WHITE
-    );
-
-    DrawText(
-        "X ou Z ............... atirar (so se Q = V)",
-        x,
-        y + 80,
-        18,
-        WHITE
-    );
-
-    DrawText(
-        "1  2  3 .............. alternar P, Q e R",
-        x,
-        y + 104,
-        18,
-        WHITE
-    );
-
-    DrawText(
-        "T tabela   P pausa   ESC menu",
-        x,
-        y + 128,
-        18,
-        WHITE
-    );
-
-    DrawText(
-        "COMO FUNCIONA",
-        520,
-        y,
-        22,
-        COR_AMARELO
-    );
-
-    DrawText(
-        "P = escudo   Q = arma   R = turbo",
-        520,
-        y + 32,
-        18,
-        WHITE
-    );
-
-    DrawText(
-        "Cada proposicao V gasta energia.",
-        520,
-        y + 56,
-        18,
-        WHITE
-    );
-
-    DrawText(
-        "No portao, a corrida para por 5 segundos.",
-        520,
-        y + 80,
-        18,
-        WHITE
-    );
-
-    DrawText(
-        "Ajuste P, Q e R para validar a formula.",
-        520,
-        y + 104,
-        18,
-        WHITE
-    );
-
-    DrawText(
-        "ENTER confirma. Formula falsa = -1 vida.",
-        520,
-        y + 128,
-        18,
-        WHITE
-    );
-
-    textoCentro(
-        "ENTER para jogar",
-        LARGURA_TELA / 2,
-        440,
-        30,
-        COR_VERDE
+        (Color){ 12, 14, 26, 220 }
     );
 }
 
 void render_pausa(void) {
     fundoEscuro();
 
-    textoCentro(
-        "PAUSADO",
-        LARGURA_TELA / 2,
-        220,
-        48,
-        WHITE
+    painel(
+        260,
+        173,
+        440,
+        180,
+        COR_PAINEL,
+        COR_AZUL,
+        2.0f
     );
 
     textoCentro(
-        "P para continuar   |   ESC para o menu",
+        "PAUSADO",
         LARGURA_TELA / 2,
-        285,
-        20,
-        (Color){ 200, 200, 210, 255 }
+        207,
+        43,
+        COR_TEXTO
+    );
+
+    textoCentro(
+        "P para continuar",
+        LARGURA_TELA / 2,
+        274,
+        19,
+        COR_CIANO
+    );
+
+    textoCentro(
+        "ESC para voltar ao menu",
+        LARGURA_TELA / 2,
+        307,
+        15,
+        COR_TEXTO_FRACO
     );
 }
 
@@ -1382,16 +2248,29 @@ void render_fim(
     bool venceu =
         m->resultado == RES_VITORIA;
 
+    Color destaque =
+        venceu
+            ? COR_VERDE
+            : COR_VERMELHO;
+
+    painel(
+        230,
+        112,
+        500,
+        310,
+        COR_PAINEL,
+        destaque,
+        3.0f
+    );
+
     textoCentro(
         venceu
             ? "VITORIA!"
             : "FIM DE JOGO",
         LARGURA_TELA / 2,
-        150,
-        56,
-        venceu
-            ? COR_VERDE
-            : COR_VERMELHO
+        143,
+        48,
+        destaque
     );
 
     char texto[128];
@@ -1399,41 +2278,77 @@ void render_fim(
     snprintf(
         texto,
         sizeof texto,
-        "Pontos: %d    Recorde: %d",
-        mundo_pontos(m),
+        "PONTOS  %d",
+        mundo_pontos(m)
+    );
+
+    textoCentro(
+        texto,
+        LARGURA_TELA / 2,
+        215,
+        29,
+        COR_TEXTO
+    );
+
+    snprintf(
+        texto,
+        sizeof texto,
+        "RECORDE  %d",
         recorde
     );
 
     textoCentro(
         texto,
         LARGURA_TELA / 2,
-        225,
-        26,
-        WHITE
+        252,
+        17,
+        COR_AMARELO
     );
 
     snprintf(
         texto,
         sizeof texto,
-        "Portoes abertos: %d   Falsos: %d   Inimigos abatidos: %d",
+        "Portoes corretos: %d    Erros: %d",
         m->portoesOk,
-        m->portoesErro,
+        m->portoesErro
+    );
+
+    textoCentro(
+        texto,
+        LARGURA_TELA / 2,
+        294,
+        17,
+        COR_TEXTO_FRACO
+    );
+
+    snprintf(
+        texto,
+        sizeof texto,
+        "Inimigos abatidos: %d",
         m->abatidos
     );
 
     textoCentro(
         texto,
         LARGURA_TELA / 2,
-        265,
-        18,
-        (Color){ 200, 200, 210, 255 }
+        323,
+        17,
+        COR_TEXTO_FRACO
     );
 
     textoCentro(
-        "ENTER para jogar de novo   |   ESC para o menu",
+        "ENTER jogar novamente",
         LARGURA_TELA / 2,
-        330,
-        20,
-        WHITE
+        365,
+        18,
+        COR_CIANO
+    );
+
+    textoCentro(
+        "ESC voltar ao menu",
+        LARGURA_TELA / 2,
+        393,
+        14,
+        COR_TEXTO_FRACO
     );
 }
