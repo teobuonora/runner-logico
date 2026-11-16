@@ -19,9 +19,9 @@
 #define TEMPO_INVULNERAVEL  1.4f
 
 /* ---------- Proposições (P, Q, R) e seus efeitos ---------- */
-#define PROP_ESCUDO 0   /* P: escudo  -> destrói o que encostar em você */
-#define PROP_ARMA   1   /* Q: arma    -> só atira com Q verdadeira      */
-#define PROP_TURBO  2   /* R: turbo   -> +35% velocidade, pontos x2     */
+#define PROP_ESCUDO 0   /* P: escudo -> destrói o que encostar em você */
+#define PROP_ARMA   1   /* Q: arma -> só atira com Q verdadeira         */
+#define PROP_TURBO  2   /* R: turbo -> +35% velocidade, pontos x2       */
 
 #define ENERGIA_MAX       100.0f
 #define CUSTO_ENERGIA     7.0f    /* por proposição verdadeira, por segundo */
@@ -38,6 +38,20 @@
 #define COOLDOWN_TIRO  0.28f
 #define MAX_ENTIDADES  48
 #define MAX_TIROS      24
+
+/* ---------- Portões lógicos ---------- */
+
+/*
+ * Quando o portão fica a esta distância do jogador, a corrida é
+ * temporariamente congelada para iniciar o desafio lógico.
+ */
+#define DISTANCIA_DECISAO_PORTAO 180.0f
+
+/*
+ * Tempo disponível para alterar P, Q e R antes que a valoração
+ * atual seja confirmada automaticamente.
+ */
+#define TEMPO_DECISAO_PORTAO 5.0f
 
 /* ---------- Objetivo do jogo ---------- */
 #define META_PORTOES   8      /* vitória: abrir 8 portões lógicos */

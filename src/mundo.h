@@ -18,13 +18,13 @@
 #include "config.h"
 
 typedef enum {
-    ENT_CACTO,        /* obstáculo fixo: pule ou use escudo           */
-    ENT_ANDARILHO,    /* inimigo terrestre (2 de vida): atire!         */
-    ENT_VOADOR,       /* inimigo aéreo (1 de vida): abaixe ou atire    */
-    ENT_PORTAO,       /* PORTÃO LÓGICO: abre se a fórmula for verdadeira */
-    ENT_PU_ENERGIA,   /* power-up: +50 de energia                      */
-    ENT_PU_VIDA,      /* power-up: +1 vida                             */
-    ENT_PU_TAUTOLOGIA /* power-up: o próximo portão abre sempre        */
+    ENT_CACTO,        /* obstáculo fixo: pule ou use escudo               */
+    ENT_ANDARILHO,    /* inimigo terrestre (2 de vida): atire!            */
+    ENT_VOADOR,       /* inimigo aéreo (1 de vida): abaixe ou atire       */
+    ENT_PORTAO,       /* portão lógico: abre se a fórmula for verdadeira  */
+    ENT_PU_ENERGIA,   /* power-up: +50 de energia                         */
+    ENT_PU_VIDA,      /* power-up: +1 vida                                */
+    ENT_PU_TAUTOLOGIA /* power-up: o próximo portão abre sempre           */
 } TipoEnt;
 
 typedef struct {
@@ -46,13 +46,18 @@ typedef struct {
 } Tiro;
 
 typedef struct {
-    bool pula;                    /* apertou agora        */
-    bool abaixa;                  /* segurando            */
-    bool atira;                   /* segurando            */
-    bool alterna[NUM_PROPS];      /* apertou 1, 2 ou 3    */
+    bool pula;                    /* apertou agora                     */
+    bool abaixa;                  /* segurando                         */
+    bool atira;                   /* segurando                         */
+    bool confirma;                /* Enter: confirma a resposta lógica */
+    bool alterna[NUM_PROPS];      /* apertou 1, 2 ou 3                 */
 } Entrada;
 
-typedef enum { RES_JOGANDO, RES_VITORIA, RES_DERROTA } Resultado;
+typedef enum {
+    RES_JOGANDO,
+    RES_VITORIA,
+    RES_DERROTA
+} Resultado;
 
 /* eventos do quadro (bitmask) — úteis para sons/efeitos depois */
 enum {
@@ -69,26 +74,49 @@ enum {
 
 typedef struct {
     /* jogador */
-    float alt, velY;              /* altura do pé acima do chão e velocidade vertical */
-    bool  noChao, abaixado;
+    float alt;
+    float velY;                   /* altura do pé e velocidade vertical */
+    bool  noChao;
+    bool  abaixado;
     int   vidas;
     float invulneravel;           /* segundos restantes */
     float cooldownTiro;
 
     /* proposições */
-    Valoracao val;                /* valor atual de P, Q, R */
+    Valoracao val;                /* valor atual de P, Q e R */
     float energia;
     float sobrecarga;             /* >0: não dá para mexer nas proposições */
     bool  tautologia;             /* próximo portão abre sempre */
 
+    /*
+     * Desafio lógico do portão.
+     *
+     * Quando decisaoPortao é verdadeira, a corrida fica congelada.
+     * O jogador pode alterar P, Q e R e confirmar com Enter.
+     * Se o tempo acabar, a valoração atual é confirmada automaticamente.
+     */
+    bool  decisaoPortao;
+    float tempoDecisaoPortao;
+
     /* coleções de objetos */
-    Entidade ents[MAX_ENTIDADES]; int nEnts;
-    Tiro     tiros[MAX_TIROS];    int nTiros;
+    Entidade ents[MAX_ENTIDADES];
+    int      nEnts;
+
+    Tiro tiros[MAX_TIROS];
+    int  nTiros;
 
     /* progresso */
-    float velocidade, distancia, tempo, pontosDist;
-    int   bonus, abatidos, portoesOk, portoesErro, portoesGerados;
-    float distProx, distProxPortao;   /* distância até o próximo objeto / portão */
+    float velocidade;
+    float distancia;
+    float tempo;
+    float pontosDist;
+    int   bonus;
+    int   abatidos;
+    int   portoesOk;
+    int   portoesErro;
+    int   portoesGerados;
+    float distProx;
+    float distProxPortao;         /* distância até o próximo objeto/portão */
 
     /* diversos */
     uint32_t  rng;
@@ -101,9 +129,14 @@ typedef struct {
 Mundo mundo_novo(uint32_t semente);
 Mundo mundo_atualiza(Mundo m, Entrada in, float dt);
 
-int        mundo_pontos(const Mundo *m);
-Rectangle  mundo_caixa_jogador(const Mundo *m);
-const Entidade *mundo_proximo_portao(const Mundo *m);   /* portão à frente ainda não avaliado, ou NULL */
+int       mundo_pontos(const Mundo *m);
+Rectangle mundo_caixa_jogador(const Mundo *m);
+
+/*
+ * Retorna o portão ainda não avaliado que está mais à frente,
+ * ou NULL quando não existe portão ativo.
+ */
+const Entidade *mundo_proximo_portao(const Mundo *m);
 
 /* ---------- regras PURAS (fáceis de testar) ---------- */
 float regra_velocidade_base(float tempo);
