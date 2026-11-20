@@ -1,29 +1,29 @@
-# Runner Lógico — Makefile (Linux, macOS e Windows/MSYS2)
+# Runner Lógico - Makefile
 #
-#   make          compila o jogo
-#   make run      compila e executa
-#   make test     roda os testes (lógica pura + regras do mundo)
-#   make clean    apaga os binários
-#
-# Se o raylib estiver numa pasta própria (ex.: instalador do Windows):
-#   make RAYLIB_SRC=C:/raylib/raylib/src
+#   mingw32-make          compila o jogo
+#   mingw32-make run      compila e executa
+#   mingw32-make test     executa os testes
+#   mingw32-make clean    remove os binarios
 
 CC      ?= gcc
 CFLAGS  += -std=c11 -Wall -Wextra -O2 -Isrc
+
 TARGET   = runner-logico
 EXE      =
 
-SRC_LOGICA = src/logica.c src/funcional.c
-SRC_JOGO   = src/main.c src/render.c src/mundo.c $(SRC_LOGICA)
-SRC_MUNDO  = src/mundo.c $(SRC_LOGICA)
+SRC_LOGICA  = src/logica.c src/funcional.c
+SRC_RANKING = src/ranking.c
+SRC_MUNDO   = src/mundo.c $(SRC_LOGICA)
+SRC_JOGO    = src/main.c src/render.c src/mundo.c $(SRC_RANKING) $(SRC_LOGICA)
 
 ifdef RAYLIB_SRC
-  CFLAGS += -I$(RAYLIB_SRC)
+  CFLAGS  += -I$(RAYLIB_SRC)
   LDFLAGS += -L$(RAYLIB_SRC)
 endif
 
 PKG_CFLAGS := $(shell pkg-config --cflags raylib 2>/dev/null)
 PKG_LIBS   := $(shell pkg-config --libs raylib 2>/dev/null)
+
 CFLAGS += $(PKG_CFLAGS)
 
 ifeq ($(OS),Windows_NT)
@@ -31,12 +31,14 @@ ifeq ($(OS),Windows_NT)
   LDLIBS = -lraylib -lopengl32 -lgdi32 -lwinmm -lm
 else
   UNAME := $(shell uname -s)
+
   ifeq ($(UNAME),Darwin)
     LDLIBS = -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo -lm
   else
     LDLIBS = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
   endif
 endif
+
 ifneq ($(PKG_LIBS),)
   LDLIBS = $(PKG_LIBS) -lm
 endif
