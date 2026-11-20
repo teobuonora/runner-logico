@@ -936,257 +936,524 @@ static void desenhaCenario(const Mundo *m) {
 
 static void desenhaTurbo(Rectangle r) {
     DrawTriangle(
-        (Vector2){ r.x + 4.0f, r.y + r.height * 0.45f },
-        (Vector2){ r.x - 27.0f, r.y + r.height * 0.52f },
-        (Vector2){ r.x + 4.0f, r.y + r.height * 0.63f },
+        (Vector2){ r.x + 2.0f, r.y + r.height * 0.45f },
+        (Vector2){ r.x - 31.0f, r.y + r.height * 0.52f },
+        (Vector2){ r.x + 2.0f, r.y + r.height * 0.64f },
         COR_LARANJA
     );
 
     DrawTriangle(
-        (Vector2){ r.x + 3.0f, r.y + r.height * 0.48f },
-        (Vector2){ r.x - 18.0f, r.y + r.height * 0.53f },
-        (Vector2){ r.x + 3.0f, r.y + r.height * 0.58f },
+        (Vector2){ r.x + 1.0f, r.y + r.height * 0.49f },
+        (Vector2){ r.x - 21.0f, r.y + r.height * 0.53f },
+        (Vector2){ r.x + 1.0f, r.y + r.height * 0.59f },
         COR_AMARELO
     );
 }
 
+static float progressoComemoracao(const Mundo *m) {
+    if (!m->sequenciaVitoria) {
+        return 0.0f;
+    }
+
+    float progresso =
+        (
+            m->tempoSequenciaVitoria -
+            TEMPO_CORRIDA_VITORIA
+        ) /
+        TEMPO_COMEMORACAO_VITORIA;
+
+    return limita01(progresso);
+}
+
+static void desenhaDinossauroAbaixado(Rectangle r) {
+    const Color corpo = COR_VERDE;
+    const Color escuro = COR_VERDE_ESCURO;
+    const Color contorno = { 20, 70, 57, 255 };
+
+    /* Cauda */
+    DrawTriangle(
+        (Vector2){ r.x + 11.0f, r.y + 10.0f },
+        (Vector2){ r.x - 35.0f, r.y + 18.0f },
+        (Vector2){ r.x + 12.0f, r.y + 25.0f },
+        escuro
+    );
+
+    DrawTriangle(
+        (Vector2){ r.x + 9.0f, r.y + 13.0f },
+        (Vector2){ r.x - 28.0f, r.y + 18.0f },
+        (Vector2){ r.x + 10.0f, r.y + 21.0f },
+        corpo
+    );
+
+    /* Corpo horizontal */
+    DrawEllipse(
+        (int)(r.x + 18.0f),
+        (int)(r.y + 17.0f),
+        29.0f,
+        15.0f,
+        contorno
+    );
+
+    DrawEllipse(
+        (int)(r.x + 19.0f),
+        (int)(r.y + 15.0f),
+        27.0f,
+        13.0f,
+        corpo
+    );
+
+    /* Pescoço e cabeça */
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + 21.0f,
+            r.y + 3.0f,
+            22.0f,
+            21.0f
+        },
+        0.35f,
+        6,
+        corpo
+    );
+
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + 30.0f,
+            r.y + 1.0f,
+            29.0f,
+            19.0f
+        },
+        0.28f,
+        6,
+        corpo
+    );
+
+    /* Focinho */
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + 43.0f,
+            r.y + 8.0f,
+            21.0f,
+            12.0f
+        },
+        0.30f,
+        5,
+        corpo
+    );
+
+    DrawLineEx(
+        (Vector2){ r.x + 46.0f, r.y + 18.0f },
+        (Vector2){ r.x + 61.0f, r.y + 18.0f },
+        1.5f,
+        contorno
+    );
+
+    /* Olho e narina */
+    DrawCircle(
+        (int)r.x + 45,
+        (int)r.y + 7,
+        4.5f,
+        WHITE
+    );
+
+    DrawCircle(
+        (int)r.x + 47,
+        (int)r.y + 7,
+        2.2f,
+        COR_PAINEL
+    );
+
+    DrawCircle(
+        (int)r.x + 59,
+        (int)r.y + 13,
+        1.5f,
+        contorno
+    );
+
+    /* Pernas recolhidas */
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + 7.0f,
+            r.y + 22.0f,
+            16.0f,
+            7.0f
+        },
+        0.35f,
+        4,
+        escuro
+    );
+
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + 25.0f,
+            r.y + 22.0f,
+            16.0f,
+            7.0f
+        },
+        0.35f,
+        4,
+        corpo
+    );
+}
+
+static void desenhaDinossauroEmPe(
+    const Mundo *m,
+    Rectangle r,
+    bool comemorando
+) {
+    const Color corpo = COR_VERDE;
+    const Color escuro = COR_VERDE_ESCURO;
+    const Color barriga = { 119, 228, 162, 255 };
+    const Color contorno = { 20, 70, 57, 255 };
+
+    float fase = m->tempo * 13.0f;
+    float oscilacao = m->noChao ? sinf(fase) * 1.4f : 0.0f;
+    float corpoY = r.y + 31.0f + oscilacao;
+
+    float comemoracao = progressoComemoracao(m);
+    float saltoVisual = 0.0f;
+
+    if (comemorando) {
+        saltoVisual =
+            sinf(comemoracao * PI) *
+            34.0f;
+
+        corpoY -= saltoVisual;
+    }
+
+    /* Sombra */
+    DrawEllipse(
+        (int)(r.x + 18.0f),
+        (int)CHAO_Y + 3,
+        comemorando
+            ? 27.0f - saltoVisual * 0.20f
+            : (!m->noChao ? 20.0f : 38.0f),
+        6.0f,
+        (Color){ 15, 22, 31, 145 }
+    );
+
+    /* Cauda grossa e afilada */
+    float movimentoCauda =
+        comemorando
+            ? sinf(comemoracao * PI * 5.0f) * 7.0f
+            : sinf(fase * 0.55f) * 3.0f;
+
+    DrawTriangle(
+        (Vector2){ r.x + 9.0f, corpoY - 7.0f },
+        (Vector2){ r.x - 39.0f, corpoY + movimentoCauda },
+        (Vector2){ r.x + 10.0f, corpoY + 13.0f },
+        escuro
+    );
+
+    DrawTriangle(
+        (Vector2){ r.x + 7.0f, corpoY - 3.0f },
+        (Vector2){ r.x - 32.0f, corpoY + movimentoCauda },
+        (Vector2){ r.x + 9.0f, corpoY + 8.0f },
+        corpo
+    );
+
+    /* Corpo */
+    DrawEllipse(
+        (int)(r.x + 16.0f),
+        (int)corpoY,
+        26.0f,
+        27.0f,
+        contorno
+    );
+
+    DrawEllipse(
+        (int)(r.x + 17.0f),
+        (int)(corpoY - 2.0f),
+        24.0f,
+        25.0f,
+        corpo
+    );
+
+    DrawEllipse(
+        (int)(r.x + 22.0f),
+        (int)(corpoY + 5.0f),
+        11.0f,
+        16.0f,
+        barriga
+    );
+
+    /* Pescoço */
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + 20.0f,
+            corpoY - 34.0f,
+            19.0f,
+            41.0f
+        },
+        0.42f,
+        7,
+        corpo
+    );
+
+    DrawTriangle(
+        (Vector2){ r.x + 18.0f, corpoY - 5.0f },
+        (Vector2){ r.x + 36.0f, corpoY - 34.0f },
+        (Vector2){ r.x + 39.0f, corpoY + 2.0f },
+        corpo
+    );
+
+    /* Cabeça */
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + 24.0f,
+            corpoY - 46.0f,
+            33.0f,
+            27.0f
+        },
+        0.30f,
+        7,
+        corpo
+    );
+
+    /* Focinho */
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + 39.0f,
+            corpoY - 36.0f,
+            27.0f,
+            17.0f
+        },
+        0.27f,
+        6,
+        corpo
+    );
+
+    /* Mandíbula */
+    DrawLineEx(
+        (Vector2){ r.x + 43.0f, corpoY - 21.0f },
+        (Vector2){ r.x + 64.0f, corpoY - 21.0f },
+        1.8f,
+        contorno
+    );
+
+    /* Olho */
+    DrawCircle(
+        (int)r.x + 44,
+        (int)(corpoY - 38.0f),
+        5.2f,
+        WHITE
+    );
+
+    DrawCircle(
+        (int)r.x + 46,
+        (int)(corpoY - 38.0f),
+        2.6f,
+        COR_PAINEL
+    );
+
+    /* Sobrancelha e narina */
+    DrawLineEx(
+        (Vector2){ r.x + 38.0f, corpoY - 44.0f },
+        (Vector2){ r.x + 49.0f, corpoY - 43.0f },
+        2.0f,
+        contorno
+    );
+
+    DrawCircle(
+        (int)r.x + 60,
+        (int)(corpoY - 30.0f),
+        1.7f,
+        contorno
+    );
+
+    /* Braços */
+    float bracoFrenteY =
+        comemorando
+            ? corpoY - 28.0f
+            : corpoY - 11.0f;
+
+    float bracoTrasY =
+        comemorando
+            ? corpoY - 25.0f
+            : corpoY - 7.0f;
+
+    DrawLineEx(
+        (Vector2){ r.x + 27.0f, corpoY - 10.0f },
+        (Vector2){ r.x + 42.0f, bracoFrenteY },
+        4.0f,
+        corpo
+    );
+
+    DrawLineEx(
+        (Vector2){ r.x + 42.0f, bracoFrenteY },
+        (Vector2){ r.x + 49.0f, bracoFrenteY - 2.0f },
+        2.5f,
+        corpo
+    );
+
+    DrawLineEx(
+        (Vector2){ r.x + 19.0f, corpoY - 8.0f },
+        (Vector2){ r.x + 8.0f, bracoTrasY },
+        4.0f,
+        escuro
+    );
+
+    /* Pernas */
+    if (!m->noChao || comemorando) {
+        DrawLineEx(
+            (Vector2){ r.x + 8.0f, corpoY + 17.0f },
+            (Vector2){ r.x + 2.0f, corpoY + 30.0f },
+            9.0f,
+            escuro
+        );
+
+        DrawLineEx(
+            (Vector2){ r.x + 2.0f, corpoY + 30.0f },
+            (Vector2){ r.x + 15.0f, corpoY + 34.0f },
+            6.0f,
+            escuro
+        );
+
+        DrawLineEx(
+            (Vector2){ r.x + 26.0f, corpoY + 16.0f },
+            (Vector2){ r.x + 34.0f, corpoY + 28.0f },
+            9.0f,
+            corpo
+        );
+
+        DrawLineEx(
+            (Vector2){ r.x + 34.0f, corpoY + 28.0f },
+            (Vector2){ r.x + 46.0f, corpoY + 24.0f },
+            6.0f,
+            corpo
+        );
+    } else {
+        float ciclo = sinf(fase);
+        float frente = ciclo * 7.0f;
+        float tras = -ciclo * 7.0f;
+        float joelhoY = r.y + r.height - 14.0f;
+        float peY = r.y + r.height + 1.0f;
+
+        DrawLineEx(
+            (Vector2){ r.x + 9.0f, corpoY + 17.0f },
+            (Vector2){ r.x + 7.0f + tras, joelhoY },
+            9.0f,
+            escuro
+        );
+
+        DrawLineEx(
+            (Vector2){ r.x + 7.0f + tras, joelhoY },
+            (Vector2){ r.x + 10.0f - tras * 0.45f, peY },
+            6.0f,
+            escuro
+        );
+
+        DrawLineEx(
+            (Vector2){ r.x + 7.0f - tras * 0.45f, peY },
+            (Vector2){ r.x + 22.0f - tras * 0.45f, peY },
+            5.0f,
+            escuro
+        );
+
+        DrawLineEx(
+            (Vector2){ r.x + 26.0f, corpoY + 16.0f },
+            (Vector2){ r.x + 28.0f + frente, joelhoY },
+            9.0f,
+            corpo
+        );
+
+        DrawLineEx(
+            (Vector2){ r.x + 28.0f + frente, joelhoY },
+            (Vector2){ r.x + 30.0f - frente * 0.45f, peY },
+            6.0f,
+            corpo
+        );
+
+        DrawLineEx(
+            (Vector2){ r.x + 28.0f - frente * 0.45f, peY },
+            (Vector2){ r.x + 45.0f - frente * 0.45f, peY },
+            5.0f,
+            corpo
+        );
+    }
+}
+
 static void desenhaJogador(const Mundo *m) {
     if (
+        !m->sequenciaVitoria &&
         m->invulneravel > 0.0f &&
         ((int)(m->invulneravel * 10.0f) % 2) == 0
     ) {
         return;
     }
 
-    Rectangle r =
-        mundo_caixa_jogador(m);
+    Rectangle r = mundo_caixa_jogador(m);
 
-    bool escudo =
-        m->val.v[PROP_ESCUDO];
+    bool comemorando =
+        m->sequenciaVitoria &&
+        m->tempoSequenciaVitoria >=
+            TEMPO_CORRIDA_VITORIA;
 
-    bool arma =
-        m->val.v[PROP_ARMA];
-
-    bool turbo =
-        m->val.v[PROP_TURBO];
-
-    if (turbo) {
+    if (m->val.v[PROP_TURBO]) {
         desenhaTurbo(r);
     }
 
-    DrawEllipse(
-        (int)(r.x + 18.0f),
-        (int)CHAO_Y + 3,
-        34.0f,
-        6.0f,
-        (Color){ 19, 31, 39, 145 }
-    );
-
-    if (m->abaixado) {
-        DrawEllipse(
-            (int)(r.x + 18.0f),
-            (int)(r.y + 16.0f),
-            28.0f,
-            14.0f,
-            COR_VERDE_ESCURO
-        );
-
-        DrawRectangleRounded(
-            (Rectangle){
-                r.x + 8.0f,
-                r.y + 3.0f,
-                38.0f,
-                22.0f
-            },
-            0.35f,
-            6,
-            COR_VERDE
-        );
-
-        DrawCircle(
-            (int)r.x + 37,
-            (int)r.y + 10,
-            4.0f,
-            WHITE
-        );
-
-        DrawCircle(
-            (int)r.x + 39,
-            (int)r.y + 10,
-            2.0f,
-            COR_PAINEL
-        );
+    if (m->abaixado && !m->sequenciaVitoria) {
+        desenhaDinossauroAbaixado(r);
     } else {
-        DrawTriangle(
-            (Vector2){
-                r.x + 8.0f,
-                r.y + 30.0f
-            },
-            (Vector2){
-                r.x - 25.0f,
-                r.y + 40.0f
-            },
-            (Vector2){
-                r.x + 10.0f,
-                r.y + 45.0f
-            },
-            COR_VERDE_ESCURO
-        );
-
-        DrawEllipse(
-            (int)(r.x + 17.0f),
-            (int)(r.y + 33.0f),
-            23.0f,
-            27.0f,
-            COR_VERDE
-        );
-
-        DrawRectangleRounded(
-            (Rectangle){
-                r.x + 16.0f,
-                r.y - 11.0f,
-                34.0f,
-                25.0f
-            },
-            0.24f,
-            6,
-            COR_VERDE
-        );
-
-        DrawRectangle(
-            (int)r.x + 34,
-            (int)r.y + 5,
-            17,
-            10,
-            COR_VERDE
-        );
-
-        DrawCircle(
-            (int)r.x + 40,
-            (int)r.y - 3,
-            5.0f,
-            WHITE
-        );
-
-        DrawCircle(
-            (int)r.x + 42,
-            (int)r.y - 3,
-            2.5f,
-            COR_PAINEL
-        );
-
-        DrawRectangle(
-            (int)r.x + 42,
-            (int)r.y + 10,
-            8,
-            2,
-            COR_VERDE_ESCURO
-        );
-
-        DrawLineEx(
-            (Vector2){
-                r.x + 20.0f,
-                r.y + 27.0f
-            },
-            (Vector2){
-                r.x + 34.0f,
-                r.y + 32.0f
-            },
-            4.0f,
-            COR_VERDE_ESCURO
-        );
-
-        bool passo =
-            m->noChao &&
-            ((int)(m->tempo * 12.0f) % 2 == 0);
-
-        int perna1 =
-            passo ? 6 : 1;
-
-        int perna2 =
-            passo ? 1 : 6;
-
-        DrawRectangle(
-            (int)r.x + 8,
-            (int)(r.y + r.height) - perna1,
-            9,
-            perna1 + 5,
-            COR_VERDE
-        );
-
-        DrawRectangle(
-            (int)r.x + 26,
-            (int)(r.y + r.height) - perna2,
-            9,
-            perna2 + 5,
-            COR_VERDE_ESCURO
-        );
-
-        DrawRectangle(
-            (int)r.x + 5,
-            (int)(r.y + r.height) - 2,
-            15,
-            4,
-            COR_VERDE
-        );
-
-        DrawRectangle(
-            (int)r.x + 23,
-            (int)(r.y + r.height) - 2,
-            15,
-            4,
-            COR_VERDE_ESCURO
+        desenhaDinossauroEmPe(
+            m,
+            r,
+            comemorando
         );
     }
 
-    if (arma) {
-        Rectangle armaRetangulo = {
-            r.x + r.width - 1.0f,
-            r.y + r.height * 0.35f,
-            20.0f,
+    if (
+        m->val.v[PROP_ARMA] &&
+        !m->sequenciaVitoria
+    ) {
+        Rectangle arma = {
+            r.x + r.width + 7.0f,
+            r.y + r.height * 0.36f,
+            22.0f,
             8.0f
         };
 
         DrawRectangleRounded(
-            armaRetangulo,
+            arma,
             0.3f,
             5,
             (Color){ 64, 69, 90, 255 }
         );
 
         DrawRectangle(
-            (int)armaRetangulo.x + 13,
-            (int)armaRetangulo.y + 2,
-            10,
+            (int)arma.x + 14,
+            (int)arma.y + 2,
+            11,
             4,
             COR_CIANO
         );
     }
 
-    if (escudo) {
-        Color preenchimento =
-            COR_AZUL;
-
+    if (
+        m->val.v[PROP_ESCUDO] &&
+        !m->sequenciaVitoria
+    ) {
+        Color preenchimento = COR_AZUL;
         preenchimento.a = 34;
 
         DrawCircle(
             (int)(r.x + r.width / 2.0f),
             (int)(r.y + r.height / 2.0f),
-            49.0f,
+            52.0f,
             preenchimento
         );
 
         DrawCircleLines(
             (int)(r.x + r.width / 2.0f),
             (int)(r.y + r.height / 2.0f),
-            49.0f,
+            52.0f,
             COR_CIANO
         );
 
         DrawCircleLines(
             (int)(r.x + r.width / 2.0f),
             (int)(r.y + r.height / 2.0f),
-            46.0f,
+            48.0f,
             (Color){ 126, 245, 248, 115 }
         );
     }
@@ -2516,6 +2783,181 @@ static void desenhaDesafioLogico(const Mundo *m) {
 }
 
 /* ============================================================
+ * SEQUÊNCIA VISUAL DE VITÓRIA
+ * ============================================================ */
+
+static void desenhaEstrelaVitoria(
+    float x,
+    float y,
+    float tamanho,
+    Color cor
+) {
+    DrawLineEx(
+        (Vector2){ x - tamanho, y },
+        (Vector2){ x + tamanho, y },
+        2.0f,
+        cor
+    );
+
+    DrawLineEx(
+        (Vector2){ x, y - tamanho },
+        (Vector2){ x, y + tamanho },
+        2.0f,
+        cor
+    );
+
+    DrawLineEx(
+        (Vector2){
+            x - tamanho * 0.65f,
+            y - tamanho * 0.65f
+        },
+        (Vector2){
+            x + tamanho * 0.65f,
+            y + tamanho * 0.65f
+        },
+        1.5f,
+        cor
+    );
+
+    DrawLineEx(
+        (Vector2){
+            x + tamanho * 0.65f,
+            y - tamanho * 0.65f
+        },
+        (Vector2){
+            x - tamanho * 0.65f,
+            y + tamanho * 0.65f
+        },
+        1.5f,
+        cor
+    );
+}
+
+static void desenhaSequenciaVitoria(const Mundo *m) {
+    if (!m->sequenciaVitoria) {
+        return;
+    }
+
+    float progresso =
+        m->tempoSequenciaVitoria /
+        TEMPO_SEQUENCIA_VITORIA;
+
+    progresso = limita01(progresso);
+
+    Color brilho = COR_AMARELO;
+
+    brilho.a =
+        (unsigned char)(
+            30.0f +
+            75.0f *
+            sinf(progresso * PI)
+        );
+
+    DrawRectangle(
+        0,
+        0,
+        LARGURA_TELA,
+        (int)CHAO_Y,
+        brilho
+    );
+
+    if (
+        m->tempoSequenciaVitoria <
+        TEMPO_CORRIDA_VITORIA
+    ) {
+        painel(
+            285,
+            90,
+            390,
+            43,
+            (Color){ 25, 30, 43, 225 },
+            COR_VERDE,
+            2.0f
+        );
+
+        textoCentro(
+            "8 PORTOES ABERTOS!",
+            LARGURA_TELA / 2,
+            100,
+            22,
+            COR_VERDE
+        );
+
+        return;
+    }
+
+    float comemoracao =
+        progressoComemoracao(m);
+
+    for (int i = 0; i < 18; i++) {
+        float angulo =
+            i * 2.39996f +
+            comemoracao * 3.0f;
+
+        float distancia =
+            65.0f +
+            (float)(i % 5) * 23.0f;
+
+        float x =
+            LARGURA_TELA / 2.0f +
+            cosf(angulo) * distancia;
+
+        float y =
+            235.0f +
+            sinf(angulo) * distancia * 0.55f;
+
+        float tamanho =
+            3.0f +
+            (float)(i % 3);
+
+        Color cor =
+            i % 2 == 0
+                ? COR_AMARELO
+                : COR_CIANO;
+
+        cor.a =
+            (unsigned char)(
+                120.0f +
+                110.0f *
+                sinf(comemoracao * PI)
+            );
+
+        desenhaEstrelaVitoria(
+            x,
+            y,
+            tamanho,
+            cor
+        );
+    }
+
+    painel(
+        260,
+        92,
+        440,
+        83,
+        (Color){ 25, 30, 43, 235 },
+        COR_AMARELO,
+        3.0f
+    );
+
+    textoCentro(
+        "TODOS OS PORTOES ABERTOS!",
+        LARGURA_TELA / 2,
+        106,
+        26,
+        COR_AMARELO
+    );
+
+    textoCentro(
+        "CORRIDA LOGICA CONCLUIDA",
+        LARGURA_TELA / 2,
+        143,
+        15,
+        COR_TEXTO
+    );
+}
+
+/* ============================================================
  * API PRINCIPAL
  * ============================================================ */
 
@@ -2540,6 +2982,7 @@ void render_mundo(
     desenhaJogador(m);
     desenhaHud(m, mostraTabela);
     desenhaDesafioLogico(m);
+    desenhaSequenciaVitoria(m);
 }
 
 /* ============================================================

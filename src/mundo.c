@@ -5,77 +5,107 @@
 #include <string.h>
 
 /* ============================================================
- * Números aleatórios determinísticos (xorshift32)
- *
- * A semente mora dentro do Mundo:
- * mesma semente + mesmas entradas = exatamente o mesmo jogo.
+ * Números aleatórios determinísticos
  * ============================================================ */
 
 static uint32_t xorshift(uint32_t s) {
     s ^= s << 13;
     s ^= s >> 17;
     s ^= s << 5;
+
     return s;
 }
 
 static float sorteia01(Mundo *m) {
     m->rng = xorshift(m->rng);
-    return (float)(m->rng & 0xFFFFFFu) / 16777216.0f;
+
+    return
+        (float)(m->rng & 0xFFFFFFu) /
+        16777216.0f;
 }
 
-static float sorteiaEntre(Mundo *m, float a, float b) {
-    return a + (b - a) * sorteia01(m);
+static float sorteiaEntre(
+    Mundo *m,
+    float a,
+    float b
+) {
+    return
+        a +
+        (b - a) *
+        sorteia01(m);
 }
 
-static int sorteiaInt(Mundo *m, int n) {
-    int r = (int)(sorteia01(m) * (float)n);
-    return r >= n ? n - 1 : r;
+static int sorteiaInt(
+    Mundo *m,
+    int n
+) {
+    int r =
+        (int)(
+            sorteia01(m) *
+            (float)n
+        );
+
+    return
+        r >= n
+            ? n - 1
+            : r;
 }
 
 /* ============================================================
- * Regras PURAS
- *
- * Recebem os dados de entrada e devolvem um resultado,
- * sem alterar o estado externo.
+ * Regras puras
  * ============================================================ */
 
 float regra_velocidade_base(float tempo) {
-    float v = VEL_INICIAL + 7.0f * tempo;
-    return v > VEL_MAX ? VEL_MAX : v;
+    float velocidade =
+        VEL_INICIAL +
+        7.0f * tempo;
+
+    return
+        velocidade > VEL_MAX
+            ? VEL_MAX
+            : velocidade;
 }
 
-float regra_energia(float energia, int ativas, float dt) {
-    float taxa = (ativas == 0)
-        ? REGEN_ENERGIA
-        : -CUSTO_ENERGIA * (float)ativas;
+float regra_energia(
+    float energia,
+    int ativas,
+    float dt
+) {
+    float taxa =
+        ativas == 0
+            ? REGEN_ENERGIA
+            : -CUSTO_ENERGIA *
+                (float)ativas;
 
-    float e = energia + taxa * dt;
+    float novaEnergia =
+        energia +
+        taxa * dt;
 
-    if (e < 0.0f) {
-        e = 0.0f;
+    if (novaEnergia < 0.0f) {
+        novaEnergia = 0.0f;
     }
 
-    if (e > ENERGIA_MAX) {
-        e = ENERGIA_MAX;
+    if (novaEnergia > ENERGIA_MAX) {
+        novaEnergia = ENERGIA_MAX;
     }
 
-    return e;
+    return novaEnergia;
 }
 
 int regra_conta_ativas(Valoracao v) {
-    int n = 0;
+    int quantidade = 0;
 
     for (int i = 0; i < NUM_PROPS; i++) {
         if (v.v[i]) {
-            n++;
+            quantidade++;
         }
     }
 
-    return n;
+    return quantidade;
 }
 
-int regra_pontos_inimigo(TipoEnt t) {
-    switch (t) {
+int regra_pontos_inimigo(TipoEnt tipo) {
+    switch (tipo) {
         case ENT_CACTO:
             return 10;
 
@@ -91,44 +121,49 @@ int regra_pontos_inimigo(TipoEnt t) {
 }
 
 int regra_nivel_formula(int portoesGerados) {
-    int n = portoesGerados / 2;
-    return n > 3 ? 3 : n;
+    int nivel =
+        portoesGerados / 2;
+
+    return
+        nivel > 3
+            ? 3
+            : nivel;
 }
 
 int mundo_pontos(const Mundo *m) {
-    return (int)m->pontosDist + m->bonus;
+    return
+        (int)m->pontosDist +
+        m->bonus;
 }
 
 Rectangle mundo_caixa_jogador(const Mundo *m) {
-    float h = m->abaixado
-        ? JOGADOR_A_ABAIXADO
-        : JOGADOR_A;
+    float altura =
+        m->abaixado
+            ? JOGADOR_A_ABAIXADO
+            : JOGADOR_A;
 
     return (Rectangle){
         JOGADOR_X,
-        CHAO_Y - m->alt - h,
+        CHAO_Y - m->alt - altura,
         JOGADOR_L,
-        h
+        altura
     };
 }
 
-/*
- * A caixa de colisão é um pouco menor que o desenho.
- * Isso torna as colisões mais justas para o jogador.
- */
 static Rectangle caixaDano(const Mundo *m) {
-    Rectangle r = mundo_caixa_jogador(m);
+    Rectangle caixa =
+        mundo_caixa_jogador(m);
 
     return (Rectangle){
-        r.x + 5.0f,
-        r.y + 4.0f,
-        r.width - 10.0f,
-        r.height - 4.0f
+        caixa.x + 5.0f,
+        caixa.y + 4.0f,
+        caixa.width - 10.0f,
+        caixa.height - 4.0f
     };
 }
 
 /* ============================================================
- * Callbacks para map / filter / fold
+ * Callbacks de map, filter e fold
  * ============================================================ */
 
 typedef struct {
@@ -136,82 +171,137 @@ typedef struct {
     float dt;
 } CtxMov;
 
-/* MAP: move cada entidade */
-static void moveEntidade(void *p, void *c) {
-    Entidade *e = (Entidade *)p;
-    const CtxMov *ctx = (const CtxMov *)c;
+static void moveEntidade(
+    void *elemento,
+    void *contexto
+) {
+    Entidade *entidade =
+        (Entidade *)elemento;
 
-    e->caixa.x -= (ctx->scroll + e->velExtra) * ctx->dt;
-    e->anim += ctx->dt;
+    const CtxMov *movimento =
+        (const CtxMov *)contexto;
 
-    if (e->tipo == ENT_VOADOR) {
-        e->caixa.y =
-            e->y0 +
-            sinf(e->anim * 5.0f) * 10.0f;
-    } else if (e->tipo >= ENT_PU_ENERGIA) {
-        e->caixa.y =
-            e->y0 +
-            sinf(e->anim * 4.0f) * 6.0f;
+    entidade->caixa.x -=
+        (
+            movimento->scroll +
+            entidade->velExtra
+        ) *
+        movimento->dt;
+
+    entidade->anim +=
+        movimento->dt;
+
+    if (entidade->tipo == ENT_VOADOR) {
+        entidade->caixa.y =
+            entidade->y0 +
+            sinf(
+                entidade->anim *
+                5.0f
+            ) *
+            10.0f;
+    } else if (
+        entidade->tipo >=
+        ENT_PU_ENERGIA
+    ) {
+        entidade->caixa.y =
+            entidade->y0 +
+            sinf(
+                entidade->anim *
+                4.0f
+            ) *
+            6.0f;
     }
 }
 
-/* MAP: move cada tiro */
-static void moveTiro(void *p, void *c) {
-    Tiro *t = (Tiro *)p;
-    const CtxMov *ctx = (const CtxMov *)c;
+static void moveTiro(
+    void *elemento,
+    void *contexto
+) {
+    Tiro *tiro =
+        (Tiro *)elemento;
 
-    t->caixa.x += VEL_TIRO * ctx->dt;
+    const CtxMov *movimento =
+        (const CtxMov *)contexto;
+
+    tiro->caixa.x +=
+        VEL_TIRO *
+        movimento->dt;
 }
 
-/* FILTER: entidades que continuam no jogo */
-static bool entidadeAtiva(const void *p, const void *c) {
-    const Entidade *e = (const Entidade *)p;
-    (void)c;
+static bool entidadeAtiva(
+    const void *elemento,
+    const void *contexto
+) {
+    const Entidade *entidade =
+        (const Entidade *)elemento;
+
+    (void)contexto;
 
     return
-        e->viva &&
-        (e->caixa.x + e->caixa.width) > -60.0f;
-}
-
-/* FILTER: tiros que continuam no jogo */
-static bool tiroAtivo(const void *p, const void *c) {
-    const Tiro *t = (const Tiro *)p;
-    (void)c;
-
-    return
-        t->vivo &&
-        t->caixa.x < LARGURA_TELA + 40.0f;
-}
-
-/* FOLD: identifica os portões vivos */
-static bool ehPortaoVivo(const void *p, const void *c) {
-    const Entidade *e = (const Entidade *)p;
-    (void)c;
-
-    return
-        e->viva &&
-        e->tipo == ENT_PORTAO;
-}
-
-static bool ehInimigo(const Entidade *e) {
-    return
-        e->viva &&
+        entidade->viva &&
         (
-            e->tipo == ENT_ANDARILHO ||
-            e->tipo == ENT_VOADOR
+            entidade->caixa.x +
+            entidade->caixa.width
+        ) >
+        -60.0f;
+}
+
+static bool tiroAtivo(
+    const void *elemento,
+    const void *contexto
+) {
+    const Tiro *tiro =
+        (const Tiro *)elemento;
+
+    (void)contexto;
+
+    return
+        tiro->vivo &&
+        tiro->caixa.x <
+            LARGURA_TELA + 40.0f;
+}
+
+static bool ehPortaoVivo(
+    const void *elemento,
+    const void *contexto
+) {
+    const Entidade *entidade =
+        (const Entidade *)elemento;
+
+    (void)contexto;
+
+    return
+        entidade->viva &&
+        entidade->tipo ==
+            ENT_PORTAO;
+}
+
+static bool ehInimigo(
+    const Entidade *entidade
+) {
+    return
+        entidade->viva &&
+        (
+            entidade->tipo ==
+                ENT_ANDARILHO ||
+            entidade->tipo ==
+                ENT_VOADOR
         );
 }
 
 /* ============================================================
- * Mensagens temporárias
+ * Mensagens
  * ============================================================ */
 
-static void mensagem(Mundo *m, const char *txt) {
+static void mensagem(
+    Mundo *m,
+    const char *texto
+) {
     snprintf(
         m->msg,
         sizeof m->msg,
         "%s",
-        txt
+        texto
     );
 
     m->msgTempo = 1.8f;
@@ -221,28 +311,28 @@ static void mensagem(Mundo *m, const char *txt) {
  * Busca de portões
  * ============================================================ */
 
-/*
- * Procura o portão vivo, ainda não avaliado, com o menor X.
- *
- * Não guardamos ponteiros permanentes para as entidades porque
- * o vetor pode ser reorganizado pela operação de filter.
- */
-static Entidade *buscaPortaoPendente(Mundo *m) {
+static Entidade *buscaPortaoPendente(
+    Mundo *m
+) {
     Entidade *melhor = NULL;
 
     for (int i = 0; i < m->nEnts; i++) {
-        Entidade *e = &m->ents[i];
+        Entidade *entidade =
+            &m->ents[i];
 
         if (
-            e->viva &&
-            e->tipo == ENT_PORTAO &&
-            !e->avaliado
+            entidade->viva &&
+            entidade->tipo ==
+                ENT_PORTAO &&
+            !entidade->avaliado
         ) {
             if (
                 melhor == NULL ||
-                e->caixa.x < melhor->caixa.x
+                entidade->caixa.x <
+                    melhor->caixa.x
             ) {
-                melhor = e;
+                melhor =
+                    entidade;
             }
         }
     }
@@ -250,46 +340,63 @@ static Entidade *buscaPortaoPendente(Mundo *m) {
     return melhor;
 }
 
-/*
- * Distância horizontal entre a frente do jogador e o começo
- * do portão.
- */
-static float distanciaAtePortao(const Entidade *portao) {
-    float frenteJogador = JOGADOR_X + JOGADOR_L;
-    return portao->caixa.x - frenteJogador;
+static float distanciaAtePortao(
+    const Entidade *portao
+) {
+    float frenteJogador =
+        JOGADOR_X +
+        JOGADOR_L;
+
+    return
+        portao->caixa.x -
+        frenteJogador;
 }
 
 /* ============================================================
  * Tiros contra inimigos
  * ============================================================ */
 
-/*
- * MAP sobre os tiros:
- * cada tiro procura um inimigo para acertar.
- */
-static void tiroContraInimigos(void *p, void *c) {
-    Tiro *t = (Tiro *)p;
-    Mundo *m = (Mundo *)c;
+static void tiroContraInimigos(
+    void *elemento,
+    void *contexto
+) {
+    Tiro *tiro =
+        (Tiro *)elemento;
 
-    if (!t->vivo) {
+    Mundo *m =
+        (Mundo *)contexto;
+
+    if (!tiro->vivo) {
         return;
     }
 
     for (int i = 0; i < m->nEnts; i++) {
-        Entidade *e = &m->ents[i];
+        Entidade *entidade =
+            &m->ents[i];
 
         if (
-            ehInimigo(e) &&
-            CheckCollisionRecs(t->caixa, e->caixa)
+            ehInimigo(entidade) &&
+            CheckCollisionRecs(
+                tiro->caixa,
+                entidade->caixa
+            )
         ) {
-            t->vivo = false;
-            e->vida--;
+            tiro->vivo = false;
+            entidade->vida--;
 
-            if (e->vida <= 0) {
-                e->viva = false;
-                m->bonus += regra_pontos_inimigo(e->tipo);
+            if (entidade->vida <= 0) {
+                entidade->viva =
+                    false;
+
+                m->bonus +=
+                    regra_pontos_inimigo(
+                        entidade->tipo
+                    );
+
                 m->abatidos++;
-                m->eventos |= EV_ABATE;
+
+                m->eventos |=
+                    EV_ABATE;
             }
 
             break;
@@ -301,52 +408,87 @@ static void tiroContraInimigos(void *p, void *c) {
  * Jogador contra entidades
  * ============================================================ */
 
-/*
- * MAP sobre as entidades:
- * verifica se o jogador encostou em alguma entidade.
- */
-static void jogadorContraEntidade(void *p, void *c) {
-    Entidade *e = (Entidade *)p;
-    Mundo *m = (Mundo *)c;
+static void jogadorContraEntidade(
+    void *elemento,
+    void *contexto
+) {
+    Entidade *entidade =
+        (Entidade *)elemento;
+
+    Mundo *m =
+        (Mundo *)contexto;
 
     if (
-        !e->viva ||
-        e->tipo == ENT_PORTAO
+        !entidade->viva ||
+        entidade->tipo ==
+            ENT_PORTAO
     ) {
         return;
     }
 
-    if (!CheckCollisionRecs(caixaDano(m), e->caixa)) {
+    if (
+        !CheckCollisionRecs(
+            caixaDano(m),
+            entidade->caixa
+        )
+    ) {
         return;
     }
 
-    switch (e->tipo) {
+    switch (entidade->tipo) {
         case ENT_PU_ENERGIA:
             m->energia += 50.0f;
 
-            if (m->energia > ENERGIA_MAX) {
-                m->energia = ENERGIA_MAX;
+            if (
+                m->energia >
+                ENERGIA_MAX
+            ) {
+                m->energia =
+                    ENERGIA_MAX;
             }
 
-            e->viva = false;
-            m->eventos |= EV_POWERUP;
-            mensagem(m, "+ENERGIA");
+            entidade->viva =
+                false;
+
+            m->eventos |=
+                EV_POWERUP;
+
+            mensagem(
+                m,
+                "+ENERGIA"
+            );
             break;
 
         case ENT_PU_VIDA:
-            if (m->vidas < VIDAS_MAX) {
+            if (
+                m->vidas <
+                VIDAS_MAX
+            ) {
                 m->vidas++;
             }
 
-            e->viva = false;
-            m->eventos |= EV_POWERUP;
-            mensagem(m, "+1 VIDA");
+            entidade->viva =
+                false;
+
+            m->eventos |=
+                EV_POWERUP;
+
+            mensagem(
+                m,
+                "+1 VIDA"
+            );
             break;
 
         case ENT_PU_TAUTOLOGIA:
-            m->tautologia = true;
-            e->viva = false;
-            m->eventos |= EV_POWERUP;
+            m->tautologia =
+                true;
+
+            entidade->viva =
+                false;
+
+            m->eventos |=
+                EV_POWERUP;
+
             mensagem(
                 m,
                 "TAUTOLOGIA! O proximo portao abre."
@@ -354,29 +496,274 @@ static void jogadorContraEntidade(void *p, void *c) {
             break;
 
         default:
-            /*
-             * Cacto, andarilho ou voador.
-             */
-            if (m->val.v[PROP_ESCUDO]) {
-                /*
-                 * P verdadeira:
-                 * o escudo destrói o inimigo.
-                 */
-                e->viva = false;
-                m->bonus += regra_pontos_inimigo(e->tipo);
-                m->eventos |= EV_ABATE;
-            } else if (m->invulneravel <= 0.0f) {
-                /*
-                 * P falsa:
-                 * o jogador recebe dano.
-                 */
+            if (
+                m->val.v[
+                    PROP_ESCUDO
+                ]
+            ) {
+                entidade->viva =
+                    false;
+
+                m->bonus +=
+                    regra_pontos_inimigo(
+                        entidade->tipo
+                    );
+
+                m->eventos |=
+                    EV_ABATE;
+            } else if (
+                m->invulneravel <=
+                0.0f
+            ) {
                 m->vidas--;
-                m->invulneravel = TEMPO_INVULNERAVEL;
-                e->viva = false;
-                m->eventos |= EV_DANO;
-                mensagem(m, "Ai! -1 vida");
+
+                m->invulneravel =
+                    TEMPO_INVULNERAVEL;
+
+                entidade->viva =
+                    false;
+
+                m->eventos |=
+                    EV_DANO;
+
+                mensagem(
+                    m,
+                    "Ai! -1 vida"
+                );
             }
             break;
+    }
+}
+
+/* ============================================================
+ * Sequência final de vitória
+ * ============================================================ */
+
+static void iniciaSequenciaVitoria(
+    Mundo *m
+) {
+    if (m->sequenciaVitoria) {
+        return;
+    }
+
+    m->sequenciaVitoria =
+        true;
+
+    m->tempoSequenciaVitoria =
+        0.0f;
+
+    /*
+     * Os poderes são desligados para a corrida final ficar
+     * totalmente controlada pela sequência.
+     */
+    m->val = (Valoracao){
+        .v = {
+            false,
+            false,
+            false
+        }
+    };
+
+    m->tautologia =
+        false;
+
+    m->sobrecarga =
+        0.0f;
+
+    m->abaixado =
+        false;
+
+    m->cooldownTiro =
+        0.0f;
+
+    /*
+     * Não são criados novos objetos durante a sequência.
+     */
+    m->distProx =
+        1e9f;
+
+    m->distProxPortao =
+        1e9f;
+
+    mensagem(
+        m,
+        "TODOS OS PORTOES FORAM ABERTOS!"
+    );
+}
+
+/*
+ * Calcula a velocidade da sequência final.
+ *
+ * Durante a primeira etapa, a corrida continua normalmente.
+ * Na comemoração, a velocidade diminui de forma gradual.
+ */
+static float velocidadeSequenciaVitoria(
+    const Mundo *m
+) {
+    if (
+        m->tempoSequenciaVitoria <=
+        TEMPO_CORRIDA_VITORIA
+    ) {
+        float velocidade =
+            regra_velocidade_base(
+                m->tempo
+            );
+
+        if (
+            velocidade <
+            VEL_INICIAL
+        ) {
+            velocidade =
+                VEL_INICIAL;
+        }
+
+        return velocidade;
+    }
+
+    float tempoComemoracao =
+        m->tempoSequenciaVitoria -
+        TEMPO_CORRIDA_VITORIA;
+
+    float progresso =
+        tempoComemoracao /
+        TEMPO_COMEMORACAO_VITORIA;
+
+    if (progresso < 0.0f) {
+        progresso = 0.0f;
+    }
+
+    if (progresso > 1.0f) {
+        progresso = 1.0f;
+    }
+
+    /*
+     * Smoothstep deixa a desaceleração menos abrupta.
+     */
+    float suavizado =
+        progresso *
+        progresso *
+        (
+            3.0f -
+            2.0f * progresso
+        );
+
+    return
+        VEL_INICIAL *
+        (
+            1.0f -
+            0.82f * suavizado
+        );
+}
+
+/*
+ * Atualiza somente o necessário durante a sequência final.
+ */
+static void passoSequenciaVitoria(
+    Mundo *m,
+    float dt
+) {
+    m->tempoSequenciaVitoria +=
+        dt;
+
+    m->tempo +=
+        dt;
+
+    /*
+     * Caso a decisão do último portão tenha acontecido durante
+     * um salto, o jogador volta ao chão naturalmente.
+     */
+    m->abaixado =
+        false;
+
+    if (!m->noChao) {
+        m->velY -=
+            GRAVIDADE *
+            dt;
+
+        m->alt +=
+            m->velY *
+            dt;
+
+        if (m->alt <= 0.0f) {
+            m->alt =
+                0.0f;
+
+            m->velY =
+                0.0f;
+
+            m->noChao =
+                true;
+        }
+    }
+
+    m->velocidade =
+        velocidadeSequenciaVitoria(m);
+
+    float scroll =
+        m->velocidade;
+
+    CtxMov contexto = {
+        scroll,
+        dt
+    };
+
+    /*
+     * Entidades continuam saindo pela esquerda.
+     *
+     * Não há colisão durante a sequência final.
+     */
+    mapa(
+        m->ents,
+        m->nEnts,
+        sizeof(Entidade),
+        moveEntidade,
+        &contexto
+    );
+
+    mapa(
+        m->tiros,
+        m->nTiros,
+        sizeof(Tiro),
+        moveTiro,
+        &contexto
+    );
+
+    m->nEnts = filtra(
+        m->ents,
+        m->nEnts,
+        sizeof(Entidade),
+        entidadeAtiva,
+        NULL
+    );
+
+    m->nTiros = filtra(
+        m->tiros,
+        m->nTiros,
+        sizeof(Tiro),
+        tiroAtivo,
+        NULL
+    );
+
+    /*
+     * A distância continua avançando para manter o paralaxe.
+     * Não são concedidos novos pontos por distância.
+     */
+    m->distancia +=
+        scroll *
+        dt;
+
+    if (
+        m->tempoSequenciaVitoria >=
+        TEMPO_SEQUENCIA_VITORIA
+    ) {
+        m->tempoSequenciaVitoria =
+            TEMPO_SEQUENCIA_VITORIA;
+
+        m->velocidade =
+            0.0f;
+
+        m->resultado =
+            RES_VITORIA;
     }
 }
 
@@ -384,162 +771,212 @@ static void jogadorContraEntidade(void *p, void *c) {
  * Desafio lógico do portão
  * ============================================================ */
 
-/*
- * Avalia definitivamente um portão.
- *
- * Esta função só deve ser chamada quando:
- * - o jogador confirmar com Enter;
- * - o contador chegar a zero;
- * - houver uma tautologia ativa.
- */
-static void finalizaPortao(Mundo *m, Entidade *portao) {
+static void finalizaPortao(
+    Mundo *m,
+    Entidade *portao
+) {
     if (
         portao == NULL ||
-        portao->tipo != ENT_PORTAO ||
+        portao->tipo !=
+            ENT_PORTAO ||
         !portao->viva ||
         portao->avaliado
     ) {
-        m->decisaoPortao = false;
-        m->tempoDecisaoPortao = 0.0f;
+        m->decisaoPortao =
+            false;
+
+        m->tempoDecisaoPortao =
+            0.0f;
+
         return;
     }
 
-    Formula f = catalogoFormula(portao->formulaId);
+    Formula formula =
+        catalogoFormula(
+            portao->formulaId
+        );
 
-    bool ok =
+    bool correto =
         m->tautologia ||
-        avalia(&f, m->val);
+        avalia(
+            &formula,
+            m->val
+        );
 
-    /*
-     * A tautologia vale somente para um portão.
-     */
-    m->tautologia = false;
+    m->tautologia =
+        false;
 
-    portao->avaliado = true;
-    portao->resultado = ok;
+    portao->avaliado =
+        true;
 
-    /*
-     * Encerra o modo de decisão antes de registrar o resultado.
-     */
-    m->decisaoPortao = false;
-    m->tempoDecisaoPortao = 0.0f;
+    portao->resultado =
+        correto;
 
-    if (ok) {
+    m->decisaoPortao =
+        false;
+
+    m->tempoDecisaoPortao =
+        0.0f;
+
+    if (correto) {
         m->portoesOk++;
-        m->bonus += PONTOS_PORTAO;
-        m->eventos |= EV_PORTAO_OK;
-        mensagem(m, "PORTAO ABERTO! +100");
+
+        m->bonus +=
+            PONTOS_PORTAO;
+
+        m->eventos |=
+            EV_PORTAO_OK;
+
+        mensagem(
+            m,
+            "PORTAO ABERTO! +100"
+        );
+
+        /*
+         * O oitavo portão inicia a sequência final, mas ainda
+         * não muda o resultado para RES_VITORIA.
+         */
+        if (
+            m->portoesOk >=
+            META_PORTOES
+        ) {
+            iniciaSequenciaVitoria(m);
+        }
     } else {
         m->portoesErro++;
+
         m->vidas--;
-        m->invulneravel = TEMPO_INVULNERAVEL;
-        m->eventos |= EV_PORTAO_ERRO;
-        mensagem(m, "FORMULA FALSA! -1 vida");
+
+        m->invulneravel =
+            TEMPO_INVULNERAVEL;
+
+        m->eventos |=
+            EV_PORTAO_ERRO;
+
+        mensagem(
+            m,
+            "FORMULA FALSA! -1 vida"
+        );
     }
 }
 
-/*
- * Verifica se um portão entrou na área de decisão.
- *
- * O desafio começa quando o portão está a uma distância igual
- * ou menor que DISTANCIA_DECISAO_PORTAO da frente do jogador.
- */
-static bool tentaIniciarDecisaoPortao(Mundo *m) {
-    if (m->decisaoPortao) {
-        return true;
+static bool tentaIniciarDecisaoPortao(
+    Mundo *m
+) {
+    if (
+        m->decisaoPortao ||
+        m->sequenciaVitoria
+    ) {
+        return
+            m->decisaoPortao;
     }
 
-    Entidade *portao = buscaPortaoPendente(m);
+    Entidade *portao =
+        buscaPortaoPendente(m);
 
     if (portao == NULL) {
         return false;
     }
 
-    float distancia = distanciaAtePortao(portao);
+    float distancia =
+        distanciaAtePortao(
+            portao
+        );
 
-    if (distancia > DISTANCIA_DECISAO_PORTAO) {
+    if (
+        distancia >
+        DISTANCIA_DECISAO_PORTAO
+    ) {
         return false;
     }
 
-    /*
-     * O power-up de tautologia torna o próximo portão sempre
-     * verdadeiro. Nesse caso, não é necessário obrigar o jogador
-     * a esperar cinco segundos ou confirmar uma resposta.
-     */
     if (m->tautologia) {
-        finalizaPortao(m, portao);
+        finalizaPortao(
+            m,
+            portao
+        );
+
         return false;
     }
 
-    m->decisaoPortao = true;
-    m->tempoDecisaoPortao = TEMPO_DECISAO_PORTAO;
-    m->abaixado = false;
+    m->decisaoPortao =
+        true;
 
-    /*
-     * Se o jogador estava no ar, mantemos a posição congelada
-     * durante o desafio. O movimento volta normalmente depois.
-     */
-    mensagem(m, "DESAFIO LOGICO! Ajuste P, Q e R.");
+    m->tempoDecisaoPortao =
+        TEMPO_DECISAO_PORTAO;
+
+    m->abaixado =
+        false;
+
+    mensagem(
+        m,
+        "DESAFIO LOGICO! Ajuste P, Q e R."
+    );
 
     return true;
 }
 
-/*
- * Atualiza apenas os controles permitidos durante o desafio.
- *
- * Durante a decisão:
- * - P, Q e R podem ser alterados;
- * - a energia não é consumida nem regenerada;
- * - pulo, tiro e movimento ficam congelados;
- * - a sobrecarga continua contando o próprio tempo.
- */
 static void passoDecisaoPortao(
     Mundo *m,
-    Entrada in,
+    Entrada entrada,
     float dt
 ) {
-    Entidade *portao = buscaPortaoPendente(m);
+    Entidade *portao =
+        buscaPortaoPendente(m);
 
     if (portao == NULL) {
-        m->decisaoPortao = false;
-        m->tempoDecisaoPortao = 0.0f;
+        m->decisaoPortao =
+            false;
+
+        m->tempoDecisaoPortao =
+            0.0f;
+
         return;
     }
 
-    /*
-     * A sobrecarga ainda impede temporariamente a alteração das
-     * proposições, mas seu contador continua diminuindo.
-     */
     if (m->sobrecarga > 0.0f) {
-        m->sobrecarga -= dt;
+        m->sobrecarga -=
+            dt;
 
         if (m->sobrecarga < 0.0f) {
-            m->sobrecarga = 0.0f;
+            m->sobrecarga =
+                0.0f;
         }
     } else {
-        for (int i = 0; i < NUM_PROPS; i++) {
-            if (in.alterna[i]) {
-                m->val.v[i] = !m->val.v[i];
+        for (
+            int i = 0;
+            i < NUM_PROPS;
+            i++
+        ) {
+            if (
+                entrada.alterna[i]
+            ) {
+                m->val.v[i] =
+                    !m->val.v[i];
             }
         }
     }
 
-    m->tempoDecisaoPortao -= dt;
+    m->tempoDecisaoPortao -=
+        dt;
 
-    if (m->tempoDecisaoPortao < 0.0f) {
-        m->tempoDecisaoPortao = 0.0f;
+    if (
+        m->tempoDecisaoPortao <
+        0.0f
+    ) {
+        m->tempoDecisaoPortao =
+            0.0f;
     }
 
-    /*
-     * A resposta é confirmada quando:
-     * - Enter é pressionado;
-     * - o contador chega a zero.
-     */
     if (
-        in.confirma ||
-        m->tempoDecisaoPortao <= 0.0f
+        entrada.confirma ||
+        m->tempoDecisaoPortao <=
+            0.0f
     ) {
-        finalizaPortao(m, portao);
+        finalizaPortao(
+            m,
+            portao
+        );
     }
 }
 
@@ -551,90 +988,146 @@ static Entidade novaEnt(
     TipoEnt tipo,
     float x,
     float y,
-    float w,
-    float h
+    float largura,
+    float altura
 ) {
-    Entidade e;
-    memset(&e, 0, sizeof e);
+    Entidade entidade;
 
-    e.tipo = tipo;
-    e.caixa = (Rectangle){ x, y, w, h };
-    e.y0 = y;
-    e.vida = 1;
-    e.viva = true;
+    memset(
+        &entidade,
+        0,
+        sizeof entidade
+    );
 
-    return e;
+    entidade.tipo =
+        tipo;
+
+    entidade.caixa =
+        (Rectangle){
+            x,
+            y,
+            largura,
+            altura
+        };
+
+    entidade.y0 =
+        y;
+
+    entidade.vida =
+        1;
+
+    entidade.viva =
+        true;
+
+    return entidade;
 }
 
-static void adiciona(Mundo *m, Entidade e) {
-    if (m->nEnts < MAX_ENTIDADES) {
-        m->ents[m->nEnts++] = e;
+static void adiciona(
+    Mundo *m,
+    Entidade entidade
+) {
+    if (
+        m->nEnts <
+        MAX_ENTIDADES
+    ) {
+        m->ents[m->nEnts++] =
+            entidade;
     }
 }
 
-static int sorteiaFormulaId(Mundo *m) {
-    int nivel = regra_nivel_formula(m->portoesGerados);
+static int sorteiaFormulaId(
+    Mundo *m
+) {
+    int nivel =
+        regra_nivel_formula(
+            m->portoesGerados
+        );
 
-    int cand[64];
-    int nc = 0;
+    int candidatos[64];
+    int quantidade = 0;
 
     for (
         int id = 0;
-        id < catalogoTamanho() && nc < 64;
+        id < catalogoTamanho() &&
+            quantidade < 64;
         id++
     ) {
-        int nv = catalogoNivel(id);
+        int nivelFormula =
+            catalogoNivel(id);
 
         if (
-            nv == nivel ||
-            nv == nivel - 1
+            nivelFormula == nivel ||
+            nivelFormula ==
+                nivel - 1
         ) {
-            cand[nc++] = id;
+            candidatos[quantidade++] =
+                id;
         }
     }
 
-    return cand[sorteiaInt(m, nc)];
+    return
+        candidatos[
+            sorteiaInt(
+                m,
+                quantidade
+            )
+        ];
 }
 
 static void geraPortao(Mundo *m) {
-    Entidade e = novaEnt(
-        ENT_PORTAO,
-        LARGURA_TELA + 40.0f,
-        CHAO_Y - 180.0f,
-        26.0f,
-        180.0f
+    Entidade entidade =
+        novaEnt(
+            ENT_PORTAO,
+            LARGURA_TELA + 40.0f,
+            CHAO_Y - 180.0f,
+            26.0f,
+            180.0f
+        );
+
+    entidade.formulaId =
+        sorteiaFormulaId(m);
+
+    adiciona(
+        m,
+        entidade
     );
-
-    e.formulaId = sorteiaFormulaId(m);
-
-    adiciona(m, e);
 
     m->portoesGerados++;
 
     m->distProxPortao =
-        sorteiaEntre(m, 8.0f, 11.0f) *
+        sorteiaEntre(
+            m,
+            8.0f,
+            11.0f
+        ) *
         VEL_INICIAL *
         1.3f;
 }
 
 static void geraObjeto(Mundo *m) {
-    float x = LARGURA_TELA + 40.0f;
-    float r = sorteia01(m);
+    float x =
+        LARGURA_TELA +
+        40.0f;
 
-    if (r < 0.12f) {
-        /*
-         * Power-up.
-         */
-        float s = sorteia01(m);
-        TipoEnt t = ENT_PU_TAUTOLOGIA;
+    float sorteio =
+        sorteia01(m);
 
-        if (s < 0.45f) {
-            t = ENT_PU_ENERGIA;
+    if (sorteio < 0.12f) {
+        float tipoSorteado =
+            sorteia01(m);
+
+        TipoEnt tipo =
+            ENT_PU_TAUTOLOGIA;
+
+        if (tipoSorteado < 0.45f) {
+            tipo =
+                ENT_PU_ENERGIA;
         } else if (
-            s < 0.65f &&
+            tipoSorteado < 0.65f &&
             m->vidas < VIDAS_MAX
         ) {
-            t = ENT_PU_VIDA;
+            tipo =
+                ENT_PU_VIDA;
         }
 
         float y =
@@ -645,117 +1138,147 @@ static void geraObjeto(Mundo *m) {
         adiciona(
             m,
             novaEnt(
-                t,
+                tipo,
                 x,
                 y,
                 28.0f,
                 28.0f
             )
         );
-    } else if (r < 0.50f) {
-        /*
-         * Cacto simples ou duplo.
-         */
-        bool duplo = sorteia01(m) < 0.3f;
-        float w = duplo ? 52.0f : 26.0f;
-        float h = sorteiaEntre(m, 44.0f, 70.0f);
+    } else if (sorteio < 0.50f) {
+        bool duplo =
+            sorteia01(m) <
+            0.3f;
+
+        float largura =
+            duplo
+                ? 52.0f
+                : 26.0f;
+
+        float altura =
+            sorteiaEntre(
+                m,
+                44.0f,
+                70.0f
+            );
 
         adiciona(
             m,
             novaEnt(
                 ENT_CACTO,
                 x,
-                CHAO_Y - h,
-                w,
-                h
+                CHAO_Y - altura,
+                largura,
+                altura
             )
         );
-    } else if (r < 0.78f) {
-        /*
-         * Andarilho.
-         */
-        Entidade e = novaEnt(
-            ENT_ANDARILHO,
-            x,
-            CHAO_Y - 44.0f,
-            40.0f,
-            44.0f
+    } else if (sorteio < 0.78f) {
+        Entidade entidade =
+            novaEnt(
+                ENT_ANDARILHO,
+                x,
+                CHAO_Y - 44.0f,
+                40.0f,
+                44.0f
+            );
+
+        entidade.vida =
+            2;
+
+        entidade.velExtra =
+            110.0f;
+
+        adiciona(
+            m,
+            entidade
         );
-
-        e.vida = 2;
-        e.velExtra = 110.0f;
-
-        adiciona(m, e);
     } else {
-        /*
-         * Voador em altura baixa ou alta.
-         */
         float y =
             sorteia01(m) < 0.6f
                 ? CHAO_Y - 70.0f
                 : CHAO_Y - 150.0f;
 
-        Entidade e = novaEnt(
-            ENT_VOADOR,
-            x,
-            y,
-            44.0f,
-            26.0f
+        Entidade entidade =
+            novaEnt(
+                ENT_VOADOR,
+                x,
+                y,
+                44.0f,
+                26.0f
+            );
+
+        entidade.velExtra =
+            80.0f;
+
+        adiciona(
+            m,
+            entidade
         );
-
-        e.velExtra = 80.0f;
-
-        adiciona(m, e);
     }
 }
 
 /* ============================================================
- * Passos do update
- *
- * Cada função possui uma única responsabilidade.
+ * Passos normais da atualização
  * ============================================================ */
 
 static void passoProposicoes(
     Mundo *m,
-    Entrada in,
+    Entrada entrada,
     float dt
 ) {
     if (m->sobrecarga > 0.0f) {
-        m->sobrecarga -= dt;
+        m->sobrecarga -=
+            dt;
 
         if (m->sobrecarga < 0.0f) {
-            m->sobrecarga = 0.0f;
+            m->sobrecarga =
+                0.0f;
         }
     } else {
-        for (int i = 0; i < NUM_PROPS; i++) {
-            if (in.alterna[i]) {
-                m->val.v[i] = !m->val.v[i];
+        for (
+            int i = 0;
+            i < NUM_PROPS;
+            i++
+        ) {
+            if (
+                entrada.alterna[i]
+            ) {
+                m->val.v[i] =
+                    !m->val.v[i];
             }
         }
     }
 
-    int ativas = regra_conta_ativas(m->val);
+    int ativas =
+        regra_conta_ativas(
+            m->val
+        );
 
-    m->energia = regra_energia(
-        m->energia,
-        ativas,
-        dt
-    );
+    m->energia =
+        regra_energia(
+            m->energia,
+            ativas,
+            dt
+        );
 
-    /*
-     * Se a energia acaba, todas as proposições voltam para F
-     * e o jogador entra em sobrecarga.
-     */
     if (
         ativas > 0 &&
         m->energia <= 0.0f
     ) {
-        m->val = (Valoracao){
-            .v = { false, false, false }
-        };
+        m->val =
+            (Valoracao){
+                .v = {
+                    false,
+                    false,
+                    false
+                }
+            };
 
-        m->sobrecarga = TEMPO_SOBRECARGA;
-        m->eventos |= EV_SOBRECARGA;
+        m->sobrecarga =
+            TEMPO_SOBRECARGA;
+
+        m->eventos |=
+            EV_SOBRECARGA;
 
         mensagem(
             m,
@@ -766,54 +1289,81 @@ static void passoProposicoes(
 
 static void passoJogador(
     Mundo *m,
-    Entrada in,
+    Entrada entrada,
     float dt
 ) {
     m->abaixado =
-        in.abaixa &&
+        entrada.abaixa &&
         m->noChao;
 
     if (
-        in.pula &&
+        entrada.pula &&
         m->noChao
     ) {
-        m->velY = VEL_PULO;
-        m->noChao = false;
-        m->abaixado = false;
-        m->eventos |= EV_PULO;
+        m->velY =
+            VEL_PULO;
+
+        m->noChao =
+            false;
+
+        m->abaixado =
+            false;
+
+        m->eventos |=
+            EV_PULO;
     }
 
     if (!m->noChao) {
-        float g =
+        float gravidade =
             GRAVIDADE +
-            (in.abaixa ? GRAVIDADE_QUEDA : 0.0f);
+            (
+                entrada.abaixa
+                    ? GRAVIDADE_QUEDA
+                    : 0.0f
+            );
 
-        m->velY -= g * dt;
-        m->alt += m->velY * dt;
+        m->velY -=
+            gravidade *
+            dt;
+
+        m->alt +=
+            m->velY *
+            dt;
 
         if (m->alt <= 0.0f) {
-            m->alt = 0.0f;
-            m->velY = 0.0f;
-            m->noChao = true;
+            m->alt =
+                0.0f;
+
+            m->velY =
+                0.0f;
+
+            m->noChao =
+                true;
         }
     }
 }
 
 static void passoTiro(
     Mundo *m,
-    Entrada in,
+    Entrada entrada,
     float dt
 ) {
     if (m->cooldownTiro > 0.0f) {
-        m->cooldownTiro -= dt;
+        m->cooldownTiro -=
+            dt;
     }
 
-    if (!in.atira) {
+    if (!entrada.atira) {
         return;
     }
 
-    if (!m->val.v[PROP_ARMA]) {
-        m->eventos |= EV_SEM_ARMA;
+    if (
+        !m->val.v[
+            PROP_ARMA
+        ]
+    ) {
+        m->eventos |=
+            EV_SEM_ARMA;
 
         if (m->msgTempo <= 0.0f) {
             mensagem(
@@ -829,20 +1379,28 @@ static void passoTiro(
         m->cooldownTiro <= 0.0f &&
         m->nTiros < MAX_TIROS
     ) {
-        Rectangle j = mundo_caixa_jogador(m);
+        Rectangle jogador =
+            mundo_caixa_jogador(m);
 
-        m->tiros[m->nTiros++] = (Tiro){
-            {
-                JOGADOR_X + JOGADOR_L,
-                j.y + j.height * 0.4f,
-                18.0f,
-                6.0f
-            },
-            true
-        };
+        m->tiros[m->nTiros++] =
+            (Tiro){
+                {
+                    JOGADOR_X +
+                        JOGADOR_L,
+                    jogador.y +
+                        jogador.height *
+                        0.4f,
+                    18.0f,
+                    6.0f
+                },
+                true
+            };
 
-        m->cooldownTiro = COOLDOWN_TIRO;
-        m->eventos |= EV_TIRO;
+        m->cooldownTiro =
+            COOLDOWN_TIRO;
+
+        m->eventos |=
+            EV_TIRO;
     }
 }
 
@@ -851,26 +1409,36 @@ static void passoSpawn(
     float scroll,
     float dt
 ) {
-    int portoes = conta(
-        m->ents,
-        m->nEnts,
-        sizeof(Entidade),
-        ehPortaoVivo,
-        NULL
-    );
-
-    m->distProxPortao -= scroll * dt;
-
-    if (m->distProx > 0.0f) {
-        m->distProx -= scroll * dt;
+    /*
+     * Nenhum novo elemento pode ser criado na sequência final.
+     */
+    if (m->sequenciaVitoria) {
+        return;
     }
 
-    /*
-     * Evita inimigos muito próximos do portão.
-     */
+    int portoes =
+        conta(
+            m->ents,
+            m->nEnts,
+            sizeof(Entidade),
+            ehPortaoVivo,
+            NULL
+        );
+
+    m->distProxPortao -=
+        scroll *
+        dt;
+
+    if (m->distProx > 0.0f) {
+        m->distProx -=
+            scroll *
+            dt;
+    }
+
     bool zonaQuieta =
         portoes > 0 ||
-        m->distProxPortao < 1.0f * scroll;
+        m->distProxPortao <
+            1.0f * scroll;
 
     if (
         m->distProx <= 0.0f &&
@@ -879,13 +1447,19 @@ static void passoSpawn(
         geraObjeto(m);
 
         m->distProx =
-            sorteiaEntre(m, 1.1f, 2.1f) *
+            sorteiaEntre(
+                m,
+                1.1f,
+                2.1f
+            ) *
             m->velocidade;
     }
 
     if (
         m->distProxPortao <= 0.0f &&
-        portoes == 0
+        portoes == 0 &&
+        m->portoesGerados <
+            META_PORTOES
     ) {
         geraPortao(m);
     }
@@ -897,17 +1471,29 @@ static void passoSpawn(
 
 Mundo mundo_novo(uint32_t semente) {
     Mundo m;
-    memset(&m, 0, sizeof m);
+
+    memset(
+        &m,
+        0,
+        sizeof m
+    );
 
     m.rng =
         semente
             ? semente
             : 0x9E3779B9u;
 
-    m.noChao = true;
-    m.vidas = VIDAS_INICIAIS;
-    m.energia = ENERGIA_MAX;
-    m.velocidade = VEL_INICIAL;
+    m.noChao =
+        true;
+
+    m.vidas =
+        VIDAS_INICIAIS;
+
+    m.energia =
+        ENERGIA_MAX;
+
+    m.velocidade =
+        VEL_INICIAL;
 
     m.distProx =
         1.6f *
@@ -917,115 +1503,169 @@ Mundo mundo_novo(uint32_t semente) {
         6.0f *
         VEL_INICIAL;
 
-    m.decisaoPortao = false;
-    m.tempoDecisaoPortao = 0.0f;
-    m.resultado = RES_JOGANDO;
+    m.decisaoPortao =
+        false;
+
+    m.tempoDecisaoPortao =
+        0.0f;
+
+    m.sequenciaVitoria =
+        false;
+
+    m.tempoSequenciaVitoria =
+        0.0f;
+
+    m.resultado =
+        RES_JOGANDO;
 
     return m;
 }
 
 Mundo mundo_atualiza(
     Mundo m,
-    Entrada in,
+    Entrada entrada,
     float dt
 ) {
     if (
-        m.resultado != RES_JOGANDO ||
+        m.resultado !=
+            RES_JOGANDO ||
         dt <= 0.0f
     ) {
         return m;
     }
 
-    /*
-     * Robustez contra quadros excessivamente longos.
-     */
     if (dt > 0.1f) {
         dt = 0.1f;
     }
 
-    m.eventos = 0;
+    m.eventos =
+        0;
 
     if (m.msgTempo > 0.0f) {
-        m.msgTempo -= dt;
+        m.msgTempo -=
+            dt;
 
         if (m.msgTempo < 0.0f) {
-            m.msgTempo = 0.0f;
+            m.msgTempo =
+                0.0f;
         }
     }
 
     if (m.invulneravel > 0.0f) {
-        m.invulneravel -= dt;
+        m.invulneravel -=
+            dt;
 
         if (m.invulneravel < 0.0f) {
-            m.invulneravel = 0.0f;
+            m.invulneravel =
+                0.0f;
         }
     }
 
     /*
-     * Se o desafio já estiver ativo, somente a lógica específica
-     * da decisão será atualizada.
-     *
-     * Não avançamos:
-     * - tempo geral;
-     * - entidades;
-     * - tiros;
-     * - distância;
-     * - pontuação;
-     * - spawn;
-     * - energia.
+     * A sequência final possui prioridade sobre todas as outras
+     * atualizações.
+     */
+    if (m.sequenciaVitoria) {
+        passoSequenciaVitoria(
+            &m,
+            dt
+        );
+
+        return m;
+    }
+
+    /*
+     * Durante o desafio do portão, somente P, Q, R e o contador
+     * são atualizados.
      */
     if (m.decisaoPortao) {
-        passoDecisaoPortao(&m, in, dt);
+        passoDecisaoPortao(
+            &m,
+            entrada,
+            dt
+        );
+
+        /*
+         * O oitavo portão pode ter iniciado a sequência.
+         * A sequência começa a avançar no próximo quadro.
+         */
+        if (m.sequenciaVitoria) {
+            return m;
+        }
 
         if (m.vidas <= 0) {
-            m.vidas = 0;
-            m.resultado = RES_DERROTA;
-        } else if (m.portoesOk >= META_PORTOES) {
-            m.resultado = RES_VITORIA;
+            m.vidas =
+                0;
+
+            m.resultado =
+                RES_DERROTA;
         }
 
         return m;
     }
 
     /*
-     * Detecta se o portão já entrou na área de decisão antes de
-     * continuar o movimento normal do quadro.
+     * Verifica se algum portão entrou na área de decisão.
      */
-    if (tentaIniciarDecisaoPortao(&m)) {
-        passoDecisaoPortao(&m, in, dt);
+    if (
+        tentaIniciarDecisaoPortao(
+            &m
+        )
+    ) {
+        passoDecisaoPortao(
+            &m,
+            entrada,
+            dt
+        );
+
         return m;
     }
 
     /*
-     * Caso uma tautologia tenha avaliado o portão imediatamente,
-     * verificamos vitória antes de continuar.
+     * A tautologia pode avaliar o oitavo portão sem abrir o
+     * painel de decisão.
      */
-    if (m.portoesOk >= META_PORTOES) {
-        m.resultado = RES_VITORIA;
+    if (m.sequenciaVitoria) {
         return m;
     }
 
-    m.tempo += dt;
+    m.tempo +=
+        dt;
 
-    passoProposicoes(&m, in, dt);
-    passoJogador(&m, in, dt);
+    passoProposicoes(
+        &m,
+        entrada,
+        dt
+    );
+
+    passoJogador(
+        &m,
+        entrada,
+        dt
+    );
 
     m.velocidade =
-        regra_velocidade_base(m.tempo) *
+        regra_velocidade_base(
+            m.tempo
+        ) *
         (
-            m.val.v[PROP_TURBO]
+            m.val.v[
+                PROP_TURBO
+            ]
                 ? BONUS_TURBO
                 : 1.0f
         );
 
-    float scroll = m.velocidade;
+    float scroll =
+        m.velocidade;
 
-    passoTiro(&m, in, dt);
+    passoTiro(
+        &m,
+        entrada,
+        dt
+    );
 
-    /*
-     * MAP: movimenta as coleções.
-     */
-    CtxMov ctx = {
+    CtxMov contexto = {
         scroll,
         dt
     };
@@ -1035,7 +1675,7 @@ Mundo mundo_atualiza(
         m.nEnts,
         sizeof(Entidade),
         moveEntidade,
-        &ctx
+        &contexto
     );
 
     mapa(
@@ -1043,12 +1683,9 @@ Mundo mundo_atualiza(
         m.nTiros,
         sizeof(Tiro),
         moveTiro,
-        &ctx
+        &contexto
     );
 
-    /*
-     * Colisões e regras.
-     */
     mapa(
         m.tiros,
         m.nTiros,
@@ -1065,26 +1702,23 @@ Mundo mundo_atualiza(
         &m
     );
 
-    /*
-     * FILTER:
-     * remove entidades mortas, entidades que saíram da tela
-     * e tiros que não estão mais ativos.
-     */
-    m.nEnts = filtra(
-        m.ents,
-        m.nEnts,
-        sizeof(Entidade),
-        entidadeAtiva,
-        NULL
-    );
+    m.nEnts =
+        filtra(
+            m.ents,
+            m.nEnts,
+            sizeof(Entidade),
+            entidadeAtiva,
+            NULL
+        );
 
-    m.nTiros = filtra(
-        m.tiros,
-        m.nTiros,
-        sizeof(Tiro),
-        tiroAtivo,
-        NULL
-    );
+    m.nTiros =
+        filtra(
+            m.tiros,
+            m.nTiros,
+            sizeof(Tiro),
+            tiroAtivo,
+            NULL
+        );
 
     passoSpawn(
         &m,
@@ -1092,59 +1726,65 @@ Mundo mundo_atualiza(
         dt
     );
 
-    /*
-     * Pontuação por distância.
-     * Com turbo ativo, os pontos por distância valem o dobro.
-     */
-    m.distancia += scroll * dt;
+    m.distancia +=
+        scroll *
+        dt;
 
     m.pontosDist +=
         scroll *
         dt *
         0.1f *
         (
-            m.val.v[PROP_TURBO]
+            m.val.v[
+                PROP_TURBO
+            ]
                 ? 2.0f
                 : 1.0f
         );
 
-    /*
-     * Depois do movimento deste quadro, verifica novamente se o
-     * portão acabou de entrar na área de decisão.
-     *
-     * A decisão será exibida imediatamente no próximo desenho.
-     */
-    tentaIniciarDecisaoPortao(&m);
+    tentaIniciarDecisaoPortao(
+        &m
+    );
+
+    if (m.vidas <= 0) {
+        m.vidas =
+            0;
+
+        m.resultado =
+            RES_DERROTA;
+    }
 
     /*
-     * Condições de fim de jogo.
+     * A vitória não é mais definida apenas por portoesOk.
+     * Ela será definida ao final de passoSequenciaVitoria().
      */
-    if (m.vidas <= 0) {
-        m.vidas = 0;
-        m.resultado = RES_DERROTA;
-    } else if (m.portoesOk >= META_PORTOES) {
-        m.resultado = RES_VITORIA;
-    }
 
     return m;
 }
 
-const Entidade *mundo_proximo_portao(const Mundo *m) {
-    const Entidade *melhor = NULL;
+const Entidade *mundo_proximo_portao(
+    const Mundo *m
+) {
+    const Entidade *melhor =
+        NULL;
 
     for (int i = 0; i < m->nEnts; i++) {
-        const Entidade *e = &m->ents[i];
+        const Entidade *entidade =
+            &m->ents[i];
 
         if (
-            e->viva &&
-            e->tipo == ENT_PORTAO &&
-            !e->avaliado
+            entidade->viva &&
+            entidade->tipo ==
+                ENT_PORTAO &&
+            !entidade->avaliado
         ) {
             if (
                 melhor == NULL ||
-                e->caixa.x < melhor->caixa.x
+                entidade->caixa.x <
+                    melhor->caixa.x
             ) {
-                melhor = e;
+                melhor =
+                    entidade;
             }
         }
     }

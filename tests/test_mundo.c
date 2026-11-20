@@ -1,14 +1,11 @@
 /*
  * Testes das regras do jogo sem abrir janela.
  *
- * Rode com:
+ * Windows:
  *     mingw32-make test-mundo
  *
- * Ou, dependendo do Makefile:
- *     mingw32-make test
- *
- * O teste é linkado com a Raylib somente por causa de
- * Rectangle e CheckCollisionRecs.
+ * Linux/macOS:
+ *     make test-mundo
  */
 
 #include <math.h>
@@ -19,36 +16,53 @@
 static int total = 0;
 static int falhas = 0;
 
-#define CHECK(cond)                                                        \
-    do {                                                                   \
-        total++;                                                           \
-        if (!(cond)) {                                                     \
-            falhas++;                                                      \
-            printf(                                                        \
-                "  FALHOU: %s (linha %d)\n",                               \
-                #cond,                                                     \
-                __LINE__                                                   \
-            );                                                             \
-        }                                                                  \
+#define CHECK(cond)                                                       \
+    do {                                                                  \
+        total++;                                                          \
+        if (!(cond)) {                                                    \
+            falhas++;                                                     \
+            printf("  FALHOU: %s (linha %d)\n", #cond, __LINE__);         \
+        }                                                                 \
     } while (0)
 
 #define DT (1.0f / 60.0f)
 
+/* ============================================================
+ * Auxiliares
+ * ============================================================ */
+
 static Entrada vazia(void) {
-    Entrada in;
-    memset(&in, 0, sizeof in);
-    return in;
+    Entrada entrada;
+
+    memset(
+        &entrada,
+        0,
+        sizeof entrada
+    );
+
+    return entrada;
 }
 
-static bool quaseIgual(float a, float b, float tolerancia) {
-    return fabsf(a - b) <= tolerancia;
+static bool quaseIgual(
+    float a,
+    float b,
+    float tolerancia
+) {
+    return
+        fabsf(a - b) <=
+        tolerancia;
 }
 
 static int idPorTexto(const char *texto) {
     char buffer[64];
 
-    for (int id = 0; id < catalogoTamanho(); id++) {
-        Formula formula = catalogoFormula(id);
+    for (
+        int id = 0;
+        id < catalogoTamanho();
+        id++
+    ) {
+        Formula formula =
+            catalogoFormula(id);
 
         formulaParaTexto(
             &formula,
@@ -56,7 +70,12 @@ static int idPorTexto(const char *texto) {
             sizeof buffer
         );
 
-        if (strcmp(buffer, texto) == 0) {
+        if (
+            strcmp(
+                buffer,
+                texto
+            ) == 0
+        ) {
             return id;
         }
     }
@@ -64,14 +83,15 @@ static int idPorTexto(const char *texto) {
     return -1;
 }
 
-/*
- * Mundo sem spawn automático atrapalhando os testes.
- */
 static Mundo mundoQuieto(void) {
-    Mundo m = mundo_novo(123);
+    Mundo m =
+        mundo_novo(123);
 
-    m.distProx = 1e9f;
-    m.distProxPortao = 1e9f;
+    m.distProx =
+        1e9f;
+
+    m.distProxPortao =
+        1e9f;
 
     return m;
 }
@@ -83,62 +103,110 @@ static Entidade coloca(
     float largura,
     float altura
 ) {
-    Entidade e;
-    memset(&e, 0, sizeof e);
+    Entidade entidade;
 
-    e.tipo = tipo;
+    memset(
+        &entidade,
+        0,
+        sizeof entidade
+    );
 
-    e.caixa = (Rectangle){
-        x,
-        y,
-        largura,
-        altura
-    };
+    entidade.tipo =
+        tipo;
 
-    e.y0 = y;
-    e.vida = 1;
-    e.viva = true;
+    entidade.caixa =
+        (Rectangle){
+            x,
+            y,
+            largura,
+            altura
+        };
 
-    return e;
+    entidade.y0 =
+        y;
+
+    entidade.vida =
+        1;
+
+    entidade.viva =
+        true;
+
+    return entidade;
 }
 
 static Entidade criaPortao(
     int formulaId,
     float x
 ) {
-    Entidade portao = coloca(
-        ENT_PORTAO,
-        x,
-        CHAO_Y - 180.0f,
-        26.0f,
-        180.0f
-    );
+    Entidade portao =
+        coloca(
+            ENT_PORTAO,
+            x,
+            CHAO_Y - 180.0f,
+            26.0f,
+            180.0f
+        );
 
-    portao.formulaId = formulaId;
+    portao.formulaId =
+        formulaId;
 
     return portao;
 }
 
-/*
- * Inicia o desafio lógico de um portão que já está dentro
- * da distância de decisão.
- */
 static Mundo iniciaDesafio(
     Mundo m,
     Entidade portao
 ) {
-    m.ents[m.nEnts++] = portao;
-    return mundo_atualiza(m, vazia(), DT);
+    m.ents[m.nEnts++] =
+        portao;
+
+    return
+        mundo_atualiza(
+            m,
+            vazia(),
+            DT
+        );
 }
 
-/*
- * Confirma imediatamente a valoração atual.
- */
 static Mundo confirmaDesafio(Mundo m) {
-    Entrada in = vazia();
-    in.confirma = true;
+    Entrada entrada =
+        vazia();
 
-    return mundo_atualiza(m, in, DT);
+    entrada.confirma =
+        true;
+
+    return
+        mundo_atualiza(
+            m,
+            entrada,
+            DT
+        );
+}
+
+static Mundo avancaSegundos(
+    Mundo m,
+    float segundos
+) {
+    int quadros =
+        (int)(
+            segundos /
+            DT
+        ) +
+        2;
+
+    for (
+        int i = 0;
+        i < quadros;
+        i++
+    ) {
+        m = mundo_atualiza(
+            m,
+            vazia(),
+            DT
+        );
+    }
+
+    return m;
 }
 
 /* ============================================================
@@ -163,36 +231,50 @@ static void testa_regras_puras(void) {
         regra_velocidade_base(5.0f)
     );
 
-    /*
-     * Sem proposições verdadeiras, a energia recarrega.
-     */
     CHECK(
-        regra_energia(50.0f, 0, 1.0f) >
-        50.0f
-    );
-
-    /*
-     * Com proposições verdadeiras, a energia diminui.
-     */
-    CHECK(
-        regra_energia(50.0f, 2, 1.0f) <
+        regra_energia(
+            50.0f,
+            0,
+            1.0f
+        ) >
         50.0f
     );
 
     CHECK(
-        regra_energia(1.0f, 3, 10.0f) ==
+        regra_energia(
+            50.0f,
+            2,
+            1.0f
+        ) <
+        50.0f
+    );
+
+    CHECK(
+        regra_energia(
+            1.0f,
+            3,
+            10.0f
+        ) ==
         0.0f
     );
 
     CHECK(
-        regra_energia(99.0f, 0, 10.0f) ==
+        regra_energia(
+            99.0f,
+            0,
+            10.0f
+        ) ==
         ENERGIA_MAX
     );
 
-    Valoracao v = valoracaoDeMascara(7);
+    Valoracao valoracao =
+        valoracaoDeMascara(7);
 
     CHECK(
-        regra_conta_ativas(v) == 3
+        regra_conta_ativas(
+            valoracao
+        ) ==
+        3
     );
 
     CHECK(
@@ -203,13 +285,14 @@ static void testa_regras_puras(void) {
 }
 
 /* ============================================================
- * Estado inicial e pureza
+ * Estado inicial
  * ============================================================ */
 
 static void testa_estado_inicial(void) {
     printf("estado inicial e pureza\n");
 
-    Mundo m = mundo_novo(1);
+    Mundo m =
+        mundo_novo(1);
 
     CHECK(
         m.vidas == VIDAS_INICIAIS &&
@@ -227,21 +310,24 @@ static void testa_estado_inicial(void) {
         m.tempoDecisaoPortao == 0.0f
     );
 
-    Mundo n = mundo_atualiza(
-        m,
-        vazia(),
-        DT
+    CHECK(
+        !m.sequenciaVitoria &&
+        m.tempoSequenciaVitoria == 0.0f
     );
 
-    /*
-     * O estado original não pode ser modificado.
-     */
+    Mundo atualizado =
+        mundo_atualiza(
+            m,
+            vazia(),
+            DT
+        );
+
     CHECK(
         m.tempo == 0.0f
     );
 
     CHECK(
-        n.tempo > 0.0f
+        atualizado.tempo > 0.0f
     );
 }
 
@@ -252,14 +338,18 @@ static void testa_estado_inicial(void) {
 static void testa_pulo(void) {
     printf("pulo\n");
 
-    Mundo m = mundoQuieto();
+    Mundo m =
+        mundoQuieto();
 
-    Entrada in = vazia();
-    in.pula = true;
+    Entrada entrada =
+        vazia();
+
+    entrada.pula =
+        true;
 
     m = mundo_atualiza(
         m,
-        in,
+        entrada,
         DT
     );
 
@@ -269,7 +359,8 @@ static void testa_pulo(void) {
         (m.eventos & EV_PULO)
     );
 
-    float apice = 0.0f;
+    float apice =
+        0.0f;
 
     for (int i = 0; i < 90; i++) {
         m = mundo_atualiza(
@@ -279,7 +370,8 @@ static void testa_pulo(void) {
         );
 
         if (m.alt > apice) {
-            apice = m.alt;
+            apice =
+                m.alt;
         }
     }
 
@@ -293,25 +385,24 @@ static void testa_pulo(void) {
         apice < 220.0f
     );
 
-    /*
-     * Não pode pular uma segunda vez no ar.
-     */
     m = mundo_atualiza(
         m,
-        in,
+        entrada,
         DT
     );
 
-    float velocidade1 = m.velY;
+    float velocidadeAntes =
+        m.velY;
 
     m = mundo_atualiza(
         m,
-        in,
+        entrada,
         DT
     );
 
     CHECK(
-        m.velY < velocidade1
+        m.velY <
+        velocidadeAntes
     );
 }
 
@@ -322,14 +413,18 @@ static void testa_pulo(void) {
 static void testa_proposicoes_e_energia(void) {
     printf("proposicoes e energia\n");
 
-    Mundo m = mundoQuieto();
+    Mundo m =
+        mundoQuieto();
 
-    Entrada in = vazia();
-    in.alterna[PROP_ESCUDO] = true;
+    Entrada entrada =
+        vazia();
+
+    entrada.alterna[PROP_ESCUDO] =
+        true;
 
     m = mundo_atualiza(
         m,
-        in,
+        entrada,
         DT
     );
 
@@ -339,7 +434,7 @@ static void testa_proposicoes_e_energia(void) {
 
     m = mundo_atualiza(
         m,
-        in,
+        entrada,
         DT
     );
 
@@ -347,14 +442,16 @@ static void testa_proposicoes_e_energia(void) {
         !m.val.v[PROP_ESCUDO]
     );
 
-    /*
-     * Energia baixa e proposições ativas causam sobrecarga.
-     */
     m = mundoQuieto();
 
-    m.val.v[PROP_ESCUDO] = true;
-    m.val.v[PROP_TURBO] = true;
-    m.energia = 0.05f;
+    m.val.v[PROP_ESCUDO] =
+        true;
+
+    m.val.v[PROP_TURBO] =
+        true;
+
+    m.energia =
+        0.05f;
 
     m = mundo_atualiza(
         m,
@@ -363,17 +460,25 @@ static void testa_proposicoes_e_energia(void) {
     );
 
     CHECK(
-        regra_conta_ativas(m.val) == 0 &&
+        regra_conta_ativas(
+            m.val
+        ) == 0
+    );
+
+    CHECK(
         m.sobrecarga > 0.0f &&
         (m.eventos & EV_SOBRECARGA)
     );
 
-    in = vazia();
-    in.alterna[PROP_ARMA] = true;
+    entrada =
+        vazia();
+
+    entrada.alterna[PROP_ARMA] =
+        true;
 
     m = mundo_atualiza(
         m,
-        in,
+        entrada,
         DT
     );
 
@@ -381,46 +486,52 @@ static void testa_proposicoes_e_energia(void) {
         !m.val.v[PROP_ARMA]
     );
 
-    /*
-     * Turbo aumenta a velocidade.
-     */
-    Mundo a = mundoQuieto();
-    Mundo b = mundoQuieto();
+    Mundo normal =
+        mundoQuieto();
 
-    b.val.v[PROP_TURBO] = true;
+    Mundo turbo =
+        mundoQuieto();
 
-    a = mundo_atualiza(
-        a,
+    turbo.val.v[PROP_TURBO] =
+        true;
+
+    normal = mundo_atualiza(
+        normal,
         vazia(),
         DT
     );
 
-    b = mundo_atualiza(
-        b,
+    turbo = mundo_atualiza(
+        turbo,
         vazia(),
         DT
     );
 
     CHECK(
-        b.velocidade > a.velocidade
+        turbo.velocidade >
+        normal.velocidade
     );
 }
 
 /* ============================================================
- * Tiros e inimigos
+ * Tiros
  * ============================================================ */
 
 static void testa_tiro(void) {
     printf("tiro e inimigos\n");
 
-    Mundo m = mundoQuieto();
+    Mundo m =
+        mundoQuieto();
 
-    Entrada in = vazia();
-    in.atira = true;
+    Entrada entrada =
+        vazia();
+
+    entrada.atira =
+        true;
 
     m = mundo_atualiza(
         m,
-        in,
+        entrada,
         DT
     );
 
@@ -430,11 +541,13 @@ static void testa_tiro(void) {
     );
 
     m = mundoQuieto();
-    m.val.v[PROP_ARMA] = true;
+
+    m.val.v[PROP_ARMA] =
+        true;
 
     m = mundo_atualiza(
         m,
-        in,
+        entrada,
         DT
     );
 
@@ -443,25 +556,25 @@ static void testa_tiro(void) {
         (m.eventos & EV_TIRO)
     );
 
-    /*
-     * O andarilho possui dois pontos de vida.
-     */
     m = mundoQuieto();
-    m.val.v[PROP_ARMA] = true;
 
-    Entidade inimigo = coloca(
-        ENT_ANDARILHO,
-        600.0f,
-        CHAO_Y - 44.0f,
-        40.0f,
-        44.0f
-    );
+    m.val.v[PROP_ARMA] =
+        true;
 
-    inimigo.vida = 2;
+    Entidade inimigo =
+        coloca(
+            ENT_ANDARILHO,
+            600.0f,
+            CHAO_Y - 44.0f,
+            40.0f,
+            44.0f
+        );
 
-    m.ents[m.nEnts++] = inimigo;
+    inimigo.vida =
+        2;
 
-    int pontosIniciais = m.bonus;
+    m.ents[m.nEnts++] =
+        inimigo;
 
     for (
         int i = 0;
@@ -470,37 +583,42 @@ static void testa_tiro(void) {
     ) {
         m = mundo_atualiza(
             m,
-            in,
+            entrada,
             DT
         );
     }
 
     CHECK(
         m.nEnts == 0 &&
-        m.abatidos == 1 &&
-        m.bonus > pontosIniciais
+        m.abatidos == 1
+    );
+
+    CHECK(
+        m.bonus >=
+        regra_pontos_inimigo(
+            ENT_ANDARILHO
+        )
     );
 }
 
 /* ============================================================
- * Colisões
+ * Colisões e power-ups
  * ============================================================ */
 
 static void testa_colisoes(void) {
     printf("colisoes\n");
 
-    /*
-     * Sem escudo, o jogador perde uma vida.
-     */
-    Mundo m = mundoQuieto();
+    Mundo m =
+        mundoQuieto();
 
-    m.ents[m.nEnts++] = coloca(
-        ENT_CACTO,
-        JOGADOR_X + 5.0f,
-        CHAO_Y - 50.0f,
-        26.0f,
-        50.0f
-    );
+    m.ents[m.nEnts++] =
+        coloca(
+            ENT_CACTO,
+            JOGADOR_X + 5.0f,
+            CHAO_Y - 50.0f,
+            26.0f,
+            50.0f
+        );
 
     m = mundo_atualiza(
         m,
@@ -509,21 +627,23 @@ static void testa_colisoes(void) {
     );
 
     CHECK(
-        m.vidas == VIDAS_INICIAIS - 1 &&
+        m.vidas ==
+        VIDAS_INICIAIS - 1
+    );
+
+    CHECK(
         (m.eventos & EV_DANO) &&
         m.nEnts == 0
     );
 
-    /*
-     * Durante a invulnerabilidade, não perde outra vida.
-     */
-    m.ents[m.nEnts++] = coloca(
-        ENT_CACTO,
-        JOGADOR_X + 5.0f,
-        CHAO_Y - 50.0f,
-        26.0f,
-        50.0f
-    );
+    m.ents[m.nEnts++] =
+        coloca(
+            ENT_CACTO,
+            JOGADOR_X + 5.0f,
+            CHAO_Y - 50.0f,
+            26.0f,
+            50.0f
+        );
 
     m = mundo_atualiza(
         m,
@@ -532,22 +652,23 @@ static void testa_colisoes(void) {
     );
 
     CHECK(
-        m.vidas == VIDAS_INICIAIS - 1
+        m.vidas ==
+        VIDAS_INICIAIS - 1
     );
 
-    /*
-     * Com escudo, o inimigo é destruído.
-     */
     m = mundoQuieto();
-    m.val.v[PROP_ESCUDO] = true;
 
-    m.ents[m.nEnts++] = coloca(
-        ENT_ANDARILHO,
-        JOGADOR_X + 5.0f,
-        CHAO_Y - 44.0f,
-        40.0f,
-        44.0f
-    );
+    m.val.v[PROP_ESCUDO] =
+        true;
+
+    m.ents[m.nEnts++] =
+        coloca(
+            ENT_ANDARILHO,
+            JOGADOR_X + 5.0f,
+            CHAO_Y - 44.0f,
+            40.0f,
+            44.0f
+        );
 
     m = mundo_atualiza(
         m,
@@ -561,75 +682,40 @@ static void testa_colisoes(void) {
         m.bonus > 0
     );
 
-    /*
-     * Pular por cima do cacto.
-     */
     m = mundoQuieto();
 
-    m.ents[m.nEnts++] = coloca(
-        ENT_CACTO,
-        500.0f,
-        CHAO_Y - 50.0f,
-        26.0f,
-        50.0f
-    );
+    m.vidas =
+        2;
 
-    Entrada in = vazia();
+    m.energia =
+        10.0f;
 
-    for (int i = 0; i < 400; i++) {
-        in = vazia();
-
-        if (
-            m.nEnts > 0 &&
-            m.ents[0].viva &&
-            m.ents[0].caixa.x < JOGADOR_X + 150.0f &&
-            m.noChao
-        ) {
-            in.pula = true;
-        }
-
-        m = mundo_atualiza(
-            m,
-            in,
-            DT
+    m.ents[m.nEnts++] =
+        coloca(
+            ENT_PU_VIDA,
+            JOGADOR_X,
+            CHAO_Y - 40.0f,
+            28.0f,
+            28.0f
         );
-    }
 
-    CHECK(
-        m.vidas == VIDAS_INICIAIS
-    );
+    m.ents[m.nEnts++] =
+        coloca(
+            ENT_PU_ENERGIA,
+            JOGADOR_X,
+            CHAO_Y - 40.0f,
+            28.0f,
+            28.0f
+        );
 
-    /*
-     * Power-ups.
-     */
-    m = mundoQuieto();
-
-    m.vidas = 2;
-    m.energia = 10.0f;
-
-    m.ents[m.nEnts++] = coloca(
-        ENT_PU_VIDA,
-        JOGADOR_X,
-        CHAO_Y - 40.0f,
-        28.0f,
-        28.0f
-    );
-
-    m.ents[m.nEnts++] = coloca(
-        ENT_PU_ENERGIA,
-        JOGADOR_X,
-        CHAO_Y - 40.0f,
-        28.0f,
-        28.0f
-    );
-
-    m.ents[m.nEnts++] = coloca(
-        ENT_PU_TAUTOLOGIA,
-        JOGADOR_X,
-        CHAO_Y - 40.0f,
-        28.0f,
-        28.0f
-    );
+    m.ents[m.nEnts++] =
+        coloca(
+            ENT_PU_TAUTOLOGIA,
+            JOGADOR_X,
+            CHAO_Y - 40.0f,
+            28.0f,
+            28.0f
+        );
 
     m = mundo_atualiza(
         m,
@@ -645,19 +731,21 @@ static void testa_colisoes(void) {
 }
 
 /* ============================================================
- * Desafio lógico dos portões
+ * Portões
  * ============================================================ */
 
 static void testa_inicio_desafio_portao(void) {
     printf("inicio do desafio do portao\n");
 
-    int idPeQ = idPorTexto("P & Q");
+    int formulaId =
+        idPorTexto("P & Q");
 
     CHECK(
-        idPeQ >= 0
+        formulaId >= 0
     );
 
-    Mundo m = mundoQuieto();
+    Mundo m =
+        mundoQuieto();
 
     float xPortao =
         JOGADOR_X +
@@ -665,15 +753,18 @@ static void testa_inicio_desafio_portao(void) {
         DISTANCIA_DECISAO_PORTAO -
         10.0f;
 
-    Entidade portao =
-        criaPortao(idPeQ, xPortao);
+    float distanciaAntes =
+        m.distancia;
 
-    float distanciaAntes = m.distancia;
-    float energiaAntes = m.energia;
+    float energiaAntes =
+        m.energia;
 
     m = iniciaDesafio(
         m,
-        portao
+        criaPortao(
+            formulaId,
+            xPortao
+        )
     );
 
     CHECK(
@@ -682,12 +773,8 @@ static void testa_inicio_desafio_portao(void) {
 
     CHECK(
         m.tempoDecisaoPortao > 0.0f &&
-        m.tempoDecisaoPortao <= TEMPO_DECISAO_PORTAO
-    );
-
-    CHECK(
-        m.portoesOk == 0 &&
-        m.portoesErro == 0
+        m.tempoDecisaoPortao <=
+            TEMPO_DECISAO_PORTAO
     );
 
     CHECK(
@@ -710,37 +797,43 @@ static void testa_inicio_desafio_portao(void) {
 static void testa_congelamento_desafio(void) {
     printf("congelamento durante o desafio\n");
 
-    int idPeQ = idPorTexto("P & Q");
+    int formulaId =
+        idPorTexto("P & Q");
 
     CHECK(
-        idPeQ >= 0
+        formulaId >= 0
     );
 
-    Mundo m = mundoQuieto();
-
-    Entidade portao = criaPortao(
-        idPeQ,
-        JOGADOR_X + JOGADOR_L + 100.0f
-    );
+    Mundo m =
+        mundoQuieto();
 
     m = iniciaDesafio(
         m,
-        portao
+        criaPortao(
+            formulaId,
+            JOGADOR_X +
+                JOGADOR_L +
+                100.0f
+        )
     );
 
-    CHECK(
-        m.decisaoPortao
-    );
+    float distanciaAntes =
+        m.distancia;
 
-    float distanciaAntes = m.distancia;
-    float pontosAntes = m.pontosDist;
-    float energiaAntes = m.energia;
-    float tempoAntes = m.tempo;
-    float xAntes = m.ents[0].caixa.x;
-    float tempoDecisaoAntes =
+    float pontosAntes =
+        m.pontosDist;
+
+    float energiaAntes =
+        m.energia;
+
+    float tempoAntes =
+        m.tempo;
+
+    float xAntes =
+        m.ents[0].caixa.x;
+
+    float contadorAntes =
         m.tempoDecisaoPortao;
-
-    m.val.v[PROP_ESCUDO] = true;
 
     m = mundo_atualiza(
         m,
@@ -794,222 +887,151 @@ static void testa_congelamento_desafio(void) {
 
     CHECK(
         m.tempoDecisaoPortao <
-        tempoDecisaoAntes
+        contadorAntes
     );
 }
 
-static void testa_alteracao_durante_desafio(void) {
-    printf("proposicoes durante o desafio\n");
+static void testa_respostas_portao(void) {
+    printf("respostas dos portoes\n");
 
-    int idPeQ = idPorTexto("P & Q");
-
-    CHECK(
-        idPeQ >= 0
-    );
-
-    Mundo m = mundoQuieto();
-
-    Entidade portao = criaPortao(
-        idPeQ,
-        JOGADOR_X + JOGADOR_L + 100.0f
-    );
-
-    m = iniciaDesafio(
-        m,
-        portao
-    );
+    int formulaId =
+        idPorTexto("P & Q");
 
     CHECK(
-        m.decisaoPortao
+        formulaId >= 0
     );
 
-    float energiaAntes = m.energia;
+    /*
+     * Resposta verdadeira.
+     */
+    Mundo correta =
+        mundoQuieto();
 
-    Entrada in = vazia();
+    correta = iniciaDesafio(
+        correta,
+        criaPortao(
+            formulaId,
+            JOGADOR_X +
+                JOGADOR_L +
+                100.0f
+        )
+    );
 
-    in.alterna[PROP_ESCUDO] = true;
-    in.alterna[PROP_ARMA] = true;
+    Entrada altera =
+        vazia();
 
-    m = mundo_atualiza(
-        m,
-        in,
+    altera.alterna[PROP_ESCUDO] =
+        true;
+
+    altera.alterna[PROP_ARMA] =
+        true;
+
+    float energiaAntes =
+        correta.energia;
+
+    correta = mundo_atualiza(
+        correta,
+        altera,
         DT
     );
 
     CHECK(
-        m.val.v[PROP_ESCUDO]
-    );
-
-    CHECK(
-        m.val.v[PROP_ARMA]
-    );
-
-    CHECK(
-        !m.val.v[PROP_TURBO]
+        correta.val.v[PROP_ESCUDO] &&
+        correta.val.v[PROP_ARMA]
     );
 
     CHECK(
         quaseIgual(
-            m.energia,
+            correta.energia,
             energiaAntes,
             0.001f
         )
     );
-}
 
-static void testa_confirmacao_verdadeira(void) {
-    printf("confirmacao verdadeira do portao\n");
-
-    int idPeQ = idPorTexto("P & Q");
+    correta =
+        confirmaDesafio(correta);
 
     CHECK(
-        idPeQ >= 0
-    );
-
-    Mundo m = mundoQuieto();
-
-    Entidade portao = criaPortao(
-        idPeQ,
-        JOGADOR_X + JOGADOR_L + 100.0f
-    );
-
-    m = iniciaDesafio(
-        m,
-        portao
-    );
-
-    Entrada in = vazia();
-
-    in.alterna[PROP_ESCUDO] = true;
-    in.alterna[PROP_ARMA] = true;
-
-    m = mundo_atualiza(
-        m,
-        in,
-        DT
+        correta.portoesOk == 1 &&
+        correta.portoesErro == 0
     );
 
     CHECK(
-        m.decisaoPortao
-    );
-
-    m = confirmaDesafio(m);
-
-    CHECK(
-        !m.decisaoPortao
+        correta.bonus ==
+        PONTOS_PORTAO
     );
 
     CHECK(
-        m.portoesOk == 1
+        correta.eventos &
+        EV_PORTAO_OK
+    );
+
+    /*
+     * Resposta falsa.
+     */
+    Mundo falsa =
+        mundoQuieto();
+
+    falsa = iniciaDesafio(
+        falsa,
+        criaPortao(
+            formulaId,
+            JOGADOR_X +
+                JOGADOR_L +
+                100.0f
+        )
+    );
+
+    falsa =
+        confirmaDesafio(falsa);
+
+    CHECK(
+        falsa.portoesOk == 0 &&
+        falsa.portoesErro == 1
     );
 
     CHECK(
-        m.portoesErro == 0
+        falsa.vidas ==
+        VIDAS_INICIAIS - 1
     );
 
     CHECK(
-        m.vidas == VIDAS_INICIAIS
-    );
-
-    CHECK(
-        m.bonus == PONTOS_PORTAO
-    );
-
-    CHECK(
-        m.eventos & EV_PORTAO_OK
-    );
-
-    CHECK(
-        m.nEnts == 1 &&
-        m.ents[0].avaliado &&
-        m.ents[0].resultado
-    );
-}
-
-static void testa_confirmacao_falsa(void) {
-    printf("confirmacao falsa do portao\n");
-
-    int idPeQ = idPorTexto("P & Q");
-
-    CHECK(
-        idPeQ >= 0
-    );
-
-    Mundo m = mundoQuieto();
-
-    Entidade portao = criaPortao(
-        idPeQ,
-        JOGADOR_X + JOGADOR_L + 100.0f
-    );
-
-    m = iniciaDesafio(
-        m,
-        portao
-    );
-
-    CHECK(
-        !m.val.v[PROP_ESCUDO] &&
-        !m.val.v[PROP_ARMA]
-    );
-
-    m = confirmaDesafio(m);
-
-    CHECK(
-        !m.decisaoPortao
-    );
-
-    CHECK(
-        m.portoesOk == 0
-    );
-
-    CHECK(
-        m.portoesErro == 1
-    );
-
-    CHECK(
-        m.vidas == VIDAS_INICIAIS - 1
-    );
-
-    CHECK(
-        m.eventos & EV_PORTAO_ERRO
-    );
-
-    CHECK(
-        m.nEnts == 1 &&
-        m.ents[0].avaliado &&
-        !m.ents[0].resultado
+        falsa.eventos &
+        EV_PORTAO_ERRO
     );
 }
 
 static void testa_confirmacao_automatica(void) {
     printf("confirmacao automatica por tempo\n");
 
-    int idPeQ = idPorTexto("P & Q");
+    int formulaId =
+        idPorTexto("P & Q");
 
     CHECK(
-        idPeQ >= 0
+        formulaId >= 0
     );
 
-    Mundo m = mundoQuieto();
-
-    Entidade portao = criaPortao(
-        idPeQ,
-        JOGADOR_X + JOGADOR_L + 100.0f
-    );
+    Mundo m =
+        mundoQuieto();
 
     m = iniciaDesafio(
         m,
-        portao
+        criaPortao(
+            formulaId,
+            JOGADOR_X +
+                JOGADOR_L +
+                100.0f
+        )
     );
 
-    /*
-     * Deixa P e Q verdadeiras para que a resposta automática
-     * seja considerada correta.
-     */
-    Entrada altera = vazia();
+    Entrada altera =
+        vazia();
 
-    altera.alterna[PROP_ESCUDO] = true;
-    altera.alterna[PROP_ARMA] = true;
+    altera.alterna[PROP_ESCUDO] =
+        true;
+
+    altera.alterna[PROP_ARMA] =
+        true;
 
     m = mundo_atualiza(
         m,
@@ -1026,7 +1048,8 @@ static void testa_confirmacao_automatica(void) {
 
     for (
         int i = 0;
-        i < limite && m.decisaoPortao;
+        i < limite &&
+            m.decisaoPortao;
         i++
     ) {
         m = mundo_atualiza(
@@ -1041,36 +1064,39 @@ static void testa_confirmacao_automatica(void) {
     );
 
     CHECK(
-        m.tempoDecisaoPortao == 0.0f
+        m.tempoDecisaoPortao ==
+        0.0f
     );
 
     CHECK(
-        m.portoesOk == 1
-    );
-
-    CHECK(
+        m.portoesOk == 1 &&
         m.portoesErro == 0
     );
 }
 
-static void testa_tautologia_portao(void) {
+static void testa_tautologia(void) {
     printf("tautologia no portao\n");
 
-    int idPeQ = idPorTexto("P & Q");
+    int formulaId =
+        idPorTexto("P & Q");
 
     CHECK(
-        idPeQ >= 0
+        formulaId >= 0
     );
 
-    Mundo m = mundoQuieto();
-    m.tautologia = true;
+    Mundo m =
+        mundoQuieto();
 
-    Entidade portao = criaPortao(
-        idPeQ,
-        JOGADOR_X + JOGADOR_L + 100.0f
-    );
+    m.tautologia =
+        true;
 
-    m.ents[m.nEnts++] = portao;
+    m.ents[m.nEnts++] =
+        criaPortao(
+            formulaId,
+            JOGADOR_X +
+                JOGADOR_L +
+                100.0f
+        );
 
     m = mundo_atualiza(
         m,
@@ -1078,18 +1104,12 @@ static void testa_tautologia_portao(void) {
         DT
     );
 
-    /*
-     * A tautologia resolve imediatamente o próximo portão.
-     */
     CHECK(
         !m.decisaoPortao
     );
 
     CHECK(
-        m.portoesOk == 1
-    );
-
-    CHECK(
+        m.portoesOk == 1 &&
         m.portoesErro == 0
     );
 
@@ -1103,105 +1123,327 @@ static void testa_tautologia_portao(void) {
     );
 }
 
-static void testa_portao_avaliado_uma_vez(void) {
-    printf("portao avaliado uma unica vez\n");
+/* ============================================================
+ * Sequência de vitória
+ * ============================================================ */
 
-    int idPeQ = idPorTexto("P & Q");
+static Mundo criaSequenciaVitoria(
+    int formulaId
+) {
+    Mundo m =
+        mundoQuieto();
 
-    CHECK(
-        idPeQ >= 0
-    );
+    m.portoesOk =
+        META_PORTOES - 1;
 
-    Mundo m = mundoQuieto();
+    m.portoesGerados =
+        META_PORTOES;
 
-    m.val.v[PROP_ESCUDO] = true;
-    m.val.v[PROP_ARMA] = true;
+    m.val.v[PROP_ESCUDO] =
+        true;
 
-    Entidade portao = criaPortao(
-        idPeQ,
-        JOGADOR_X + JOGADOR_L + 100.0f
-    );
+    m.val.v[PROP_ARMA] =
+        true;
+
+    m.val.v[PROP_TURBO] =
+        true;
 
     m = iniciaDesafio(
         m,
-        portao
+        criaPortao(
+            formulaId,
+            JOGADOR_X +
+                JOGADOR_L +
+                100.0f
+        )
     );
 
-    m = confirmaDesafio(m);
+    return
+        confirmaDesafio(m);
+}
+
+static void testa_inicio_sequencia_vitoria(void) {
+    printf("inicio da sequencia de vitoria\n");
+
+    int formulaId =
+        idPorTexto("P & Q");
 
     CHECK(
-        m.portoesOk == 1
+        formulaId >= 0
     );
 
-    for (int i = 0; i < 30; i++) {
-        m = mundo_atualiza(
+    Mundo m =
+        criaSequenciaVitoria(
+            formulaId
+        );
+
+    CHECK(
+        m.portoesOk ==
+        META_PORTOES
+    );
+
+    CHECK(
+        m.sequenciaVitoria
+    );
+
+    CHECK(
+        m.resultado ==
+        RES_JOGANDO
+    );
+
+    CHECK(
+        m.tempoSequenciaVitoria ==
+        0.0f
+    );
+
+    CHECK(
+        regra_conta_ativas(
+            m.val
+        ) == 0
+    );
+
+    CHECK(
+        !m.tautologia &&
+        m.sobrecarga == 0.0f
+    );
+
+    CHECK(
+        m.distProx > 1e8f &&
+        m.distProxPortao > 1e8f
+    );
+}
+
+static void testa_movimento_sequencia_vitoria(void) {
+    printf("movimento da sequencia de vitoria\n");
+
+    int formulaId =
+        idPorTexto("P & Q");
+
+    CHECK(
+        formulaId >= 0
+    );
+
+    Mundo m =
+        criaSequenciaVitoria(
+            formulaId
+        );
+
+    float xPortaoAntes =
+        m.ents[0].caixa.x;
+
+    float distanciaAntes =
+        m.distancia;
+
+    float pontosAntes =
+        m.pontosDist;
+
+    int entidadesAntes =
+        m.nEnts;
+
+    Entrada entrada =
+        vazia();
+
+    entrada.pula =
+        true;
+
+    entrada.atira =
+        true;
+
+    entrada.alterna[PROP_ESCUDO] =
+        true;
+
+    entrada.alterna[PROP_ARMA] =
+        true;
+
+    entrada.alterna[PROP_TURBO] =
+        true;
+
+    m = mundo_atualiza(
+        m,
+        entrada,
+        DT
+    );
+
+    CHECK(
+        m.sequenciaVitoria &&
+        m.resultado == RES_JOGANDO
+    );
+
+    CHECK(
+        m.tempoSequenciaVitoria >
+        0.0f
+    );
+
+    CHECK(
+        m.distancia >
+        distanciaAntes
+    );
+
+    CHECK(
+        m.ents[0].caixa.x <
+        xPortaoAntes
+    );
+
+    CHECK(
+        quaseIgual(
+            m.pontosDist,
+            pontosAntes,
+            0.001f
+        )
+    );
+
+    CHECK(
+        regra_conta_ativas(
+            m.val
+        ) == 0
+    );
+
+    CHECK(
+        m.nTiros == 0
+    );
+
+    CHECK(
+        m.nEnts <=
+        entidadesAntes
+    );
+}
+
+static void testa_desaceleracao_vitoria(void) {
+    printf("desaceleracao da sequencia de vitoria\n");
+
+    int formulaId =
+        idPorTexto("P & Q");
+
+    CHECK(
+        formulaId >= 0
+    );
+
+    Mundo m =
+        criaSequenciaVitoria(
+            formulaId
+        );
+
+    m = avancaSegundos(
+        m,
+        TEMPO_CORRIDA_VITORIA -
+            0.2f
+    );
+
+    CHECK(
+        m.sequenciaVitoria &&
+        m.resultado == RES_JOGANDO
+    );
+
+    float velocidadeCorrida =
+        m.velocidade;
+
+    m = avancaSegundos(
+        m,
+        0.9f
+    );
+
+    CHECK(
+        m.sequenciaVitoria
+    );
+
+    CHECK(
+        m.tempoSequenciaVitoria >
+        TEMPO_CORRIDA_VITORIA
+    );
+
+    CHECK(
+        m.velocidade <
+        velocidadeCorrida
+    );
+}
+
+static void testa_fim_sequencia_vitoria(void) {
+    printf("fim da sequencia de vitoria\n");
+
+    int formulaId =
+        idPorTexto("P & Q");
+
+    CHECK(
+        formulaId >= 0
+    );
+
+    Mundo m =
+        criaSequenciaVitoria(
+            formulaId
+        );
+
+    m = avancaSegundos(
+        m,
+        TEMPO_SEQUENCIA_VITORIA +
+            0.2f
+    );
+
+    CHECK(
+        m.resultado ==
+        RES_VITORIA
+    );
+
+    CHECK(
+        m.sequenciaVitoria
+    );
+
+    CHECK(
+        quaseIgual(
+            m.tempoSequenciaVitoria,
+            TEMPO_SEQUENCIA_VITORIA,
+            0.001f
+        )
+    );
+
+    CHECK(
+        m.velocidade ==
+        0.0f
+    );
+
+    Mundo depois =
+        mundo_atualiza(
             m,
             vazia(),
             DT
         );
-    }
 
     CHECK(
-        m.portoesOk == 1 &&
-        m.portoesErro == 0
+        quaseIgual(
+            depois.distancia,
+            m.distancia,
+            0.001f
+        )
     );
 }
 
-static void testa_vitoria_e_derrota_portoes(void) {
-    printf("vitoria e derrota pelos portoes\n");
+static void testa_derrota_portao(void) {
+    printf("derrota por erro no portao\n");
 
-    int idPeQ = idPorTexto("P & Q");
+    int formulaId =
+        idPorTexto("P & Q");
 
     CHECK(
-        idPeQ >= 0
+        formulaId >= 0
     );
 
-    /*
-     * Vitória no último portão necessário.
-     */
-    Mundo m = mundoQuieto();
+    Mundo m =
+        mundoQuieto();
 
-    m.portoesOk = META_PORTOES - 1;
-    m.val.v[PROP_ESCUDO] = true;
-    m.val.v[PROP_ARMA] = true;
-
-    Entidade portao = criaPortao(
-        idPeQ,
-        JOGADOR_X + JOGADOR_L + 100.0f
-    );
+    m.vidas =
+        1;
 
     m = iniciaDesafio(
         m,
-        portao
+        criaPortao(
+            formulaId,
+            JOGADOR_X +
+                JOGADOR_L +
+                100.0f
+        )
     );
 
-    m = confirmaDesafio(m);
-
-    CHECK(
-        m.portoesOk == META_PORTOES
-    );
-
-    CHECK(
-        m.resultado == RES_VITORIA
-    );
-
-    /*
-     * Derrota ao errar um portão com uma única vida.
-     */
-    m = mundoQuieto();
-    m.vidas = 1;
-
-    portao = criaPortao(
-        idPeQ,
-        JOGADOR_X + JOGADOR_L + 100.0f
-    );
-
-    m = iniciaDesafio(
-        m,
-        portao
-    );
-
-    m = confirmaDesafio(m);
+    m =
+        confirmaDesafio(m);
 
     CHECK(
         m.portoesErro == 1
@@ -1212,36 +1454,62 @@ static void testa_vitoria_e_derrota_portoes(void) {
     );
 
     CHECK(
-        m.resultado == RES_DERROTA
+        m.resultado ==
+        RES_DERROTA
+    );
+
+    CHECK(
+        !m.sequenciaVitoria
     );
 }
 
 static void testa_portoes(void) {
     testa_inicio_desafio_portao();
     testa_congelamento_desafio();
-    testa_alteracao_durante_desafio();
-    testa_confirmacao_verdadeira();
-    testa_confirmacao_falsa();
+    testa_respostas_portao();
     testa_confirmacao_automatica();
-    testa_tautologia_portao();
-    testa_portao_avaliado_uma_vez();
-    testa_vitoria_e_derrota_portoes();
+    testa_tautologia();
+
+    testa_inicio_sequencia_vitoria();
+    testa_movimento_sequencia_vitoria();
+    testa_desaceleracao_vitoria();
+    testa_fim_sequencia_vitoria();
+    testa_derrota_portao();
 }
 
 /* ============================================================
- * Simulação longa, robustez e determinismo
+ * Determinismo e robustez
  * ============================================================ */
 
-static unsigned fingerprint(const Mundo *m) {
+static unsigned fingerprint(
+    const Mundo *m
+) {
     return
-        (unsigned)(m->distancia * 10.0f) * 31u +
-        (unsigned)m->nEnts * 17u +
+        (unsigned)(
+            m->distancia *
+            10.0f
+        ) *
+        31u +
+        (unsigned)m->nEnts *
+        17u +
         (unsigned)mundo_pontos(m) +
-        (unsigned)m->vidas * 7919u +
-        (unsigned)m->portoesGerados * 104729u +
-        (unsigned)m->portoesOk * 37u +
-        (unsigned)m->portoesErro * 43u +
-        (unsigned)m->decisaoPortao * 97u;
+        (unsigned)m->vidas *
+        7919u +
+        (unsigned)m->portoesGerados *
+        104729u +
+        (unsigned)m->portoesOk *
+        37u +
+        (unsigned)m->portoesErro *
+        43u +
+        (unsigned)m->decisaoPortao *
+        97u +
+        (unsigned)m->sequenciaVitoria *
+        193u +
+        (unsigned)(
+            m->tempoSequenciaVitoria *
+            100.0f
+        ) *
+        389u;
 }
 
 static void testa_simulacao(void) {
@@ -1252,53 +1520,56 @@ static void testa_simulacao(void) {
         semente <= 5;
         semente++
     ) {
-        Mundo a = mundo_novo(semente);
-        Mundo b = mundo_novo(semente);
+        Mundo a =
+            mundo_novo(semente);
 
-        /*
-         * Mantém vidas suficientes para a simulação continuar
-         * mesmo se várias fórmulas forem respondidas incorretamente.
-         */
-        a.vidas = 99;
-        b.vidas = 99;
+        Mundo b =
+            mundo_novo(semente);
 
-        for (int i = 0; i < 60 * 120; i++) {
-            Entrada in = vazia();
+        a.vidas =
+            99;
 
-            in.pula =
+        b.vidas =
+            99;
+
+        for (
+            int i = 0;
+            i < 60 * 120;
+            i++
+        ) {
+            Entrada entrada =
+                vazia();
+
+            entrada.pula =
                 (i % 37) == 0;
 
-            in.abaixa =
+            entrada.abaixa =
                 (i % 91) < 20;
 
-            in.atira =
+            entrada.atira =
                 (i % 5) < 3;
 
-            in.alterna[PROP_ESCUDO] =
+            entrada.alterna[PROP_ESCUDO] =
                 (i % 211) == 0;
 
-            in.alterna[PROP_ARMA] =
+            entrada.alterna[PROP_ARMA] =
                 (i % 83) == 0;
 
-            in.alterna[PROP_TURBO] =
+            entrada.alterna[PROP_TURBO] =
                 (i % 157) == 0;
 
-            /*
-             * Confirma rapidamente os desafios para que a
-             * simulação cubra vários portões.
-             */
-            in.confirma =
+            entrada.confirma =
                 a.decisaoPortao;
 
             a = mundo_atualiza(
                 a,
-                in,
+                entrada,
                 DT
             );
 
             b = mundo_atualiza(
                 b,
-                in,
+                entrada,
                 DT
             );
 
@@ -1329,7 +1600,19 @@ static void testa_simulacao(void) {
                 break;
             }
 
-            if (a.resultado != RES_JOGANDO) {
+            if (
+                a.tempoSequenciaVitoria < 0.0f ||
+                a.tempoSequenciaVitoria >
+                    TEMPO_SEQUENCIA_VITORIA
+            ) {
+                CHECK(0);
+                break;
+            }
+
+            if (
+                a.resultado !=
+                RES_JOGANDO
+            ) {
                 break;
             }
         }
@@ -1352,24 +1635,35 @@ static void testa_simulacao(void) {
             a.portoesErro ==
             b.portoesErro
         );
+
+        CHECK(
+            a.sequenciaVitoria ==
+            b.sequenciaVitoria
+        );
     }
 
-    /*
-     * Sem fim de jogo, os portões devem surgir normalmente.
-     */
-    Mundo m = mundo_novo(7);
-    m.vidas = 99;
+    Mundo m =
+        mundo_novo(7);
 
-    for (int i = 0; i < 60 * 20; i++) {
-        Entrada in = vazia();
+    m.vidas =
+        99;
+
+    for (
+        int i = 0;
+        i < 60 * 20;
+        i++
+    ) {
+        Entrada entrada =
+            vazia();
 
         if (m.decisaoPortao) {
-            in.confirma = true;
+            entrada.confirma =
+                true;
         }
 
         m = mundo_atualiza(
             m,
-            in,
+            entrada,
             DT
         );
     }
@@ -1399,5 +1693,8 @@ int main(void) {
         falhas
     );
 
-    return falhas ? 1 : 0;
+    return
+        falhas
+            ? 1
+            : 0;
 }

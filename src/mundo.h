@@ -2,56 +2,92 @@
 #define MUNDO_H
 
 /*
- * ESTADO DO JOGO + REGRAS (sem desenhar nada, sem ler teclado).
+ * ESTADO DO JOGO + REGRAS
  *
- *   Mundo mundo_atualiza(Mundo m, Entrada in, float dt)
+ * Este módulo não desenha e não lê diretamente o teclado.
  *
- * recebe o estado antigo (por valor = uma cópia), a entrada do quadro e o
- * tempo decorrido, e DEVOLVE o novo estado. O game loop (main.c) só chama
- * essa função e depois manda desenhar. Assim a lógica é testável sem janela.
+ *     Mundo mundo_atualiza(Mundo m, Entrada in, float dt)
+ *
+ * A função recebe o estado antigo por valor e devolve um novo
+ * estado. Isso permite testar a lógica sem abrir a janela.
  */
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "raylib.h"      /* só para Rectangle e CheckCollisionRecs */
+#include "raylib.h"
 #include "logica.h"
 #include "config.h"
 
+/* ============================================================
+ * ENTIDADES
+ * ============================================================ */
+
 typedef enum {
-    ENT_CACTO,        /* obstáculo fixo: pule ou use escudo               */
-    ENT_ANDARILHO,    /* inimigo terrestre (2 de vida): atire!            */
-    ENT_VOADOR,       /* inimigo aéreo (1 de vida): abaixe ou atire       */
-    ENT_PORTAO,       /* portão lógico: abre se a fórmula for verdadeira  */
-    ENT_PU_ENERGIA,   /* power-up: +50 de energia                         */
-    ENT_PU_VIDA,      /* power-up: +1 vida                                */
-    ENT_PU_TAUTOLOGIA /* power-up: o próximo portão abre sempre           */
+    ENT_CACTO,
+    ENT_ANDARILHO,
+    ENT_VOADOR,
+    ENT_PORTAO,
+    ENT_PU_ENERGIA,
+    ENT_PU_VIDA,
+    ENT_PU_TAUTOLOGIA
 } TipoEnt;
 
 typedef struct {
-    TipoEnt   tipo;
+    TipoEnt tipo;
+
     Rectangle caixa;
-    float     y0;          /* altura-base (voadores e power-ups balançam) */
-    float     velExtra;    /* velocidade própria além da rolagem do chão  */
-    int       vida;
-    bool      viva;
-    float     anim;
-    int       formulaId;   /* só para portões: índice no catálogo */
-    bool      avaliado;    /* só para portões: já foi avaliado?   */
-    bool      resultado;   /* só para portões: deu V ou F?        */
+
+    /*
+     * Altura-base utilizada por entidades que oscilam
+     * verticalmente.
+     */
+    float y0;
+
+    /*
+     * Velocidade própria além da rolagem do cenário.
+     */
+    float velExtra;
+
+    int vida;
+    bool viva;
+    float anim;
+
+    /*
+     * Campos utilizados principalmente pelo portão.
+     */
+    int  formulaId;
+    bool avaliado;
+    bool resultado;
 } Entidade;
 
 typedef struct {
     Rectangle caixa;
-    bool      vivo;
+    bool vivo;
 } Tiro;
 
+/* ============================================================
+ * ENTRADA
+ * ============================================================ */
+
 typedef struct {
-    bool pula;                    /* apertou agora                     */
-    bool abaixa;                  /* segurando                         */
-    bool atira;                   /* segurando                         */
-    bool confirma;                /* Enter: confirma a resposta lógica */
-    bool alterna[NUM_PROPS];      /* apertou 1, 2 ou 3                 */
+    bool pula;
+    bool abaixa;
+    bool atira;
+
+    /*
+     * Enter confirma a resposta durante o desafio lógico.
+     */
+    bool confirma;
+
+    /*
+     * Teclas 1, 2 e 3.
+     */
+    bool alterna[NUM_PROPS];
 } Entrada;
+
+/* ============================================================
+ * RESULTADO
+ * ============================================================ */
 
 typedef enum {
     RES_JOGANDO,
@@ -59,7 +95,13 @@ typedef enum {
     RES_DERROTA
 } Resultado;
 
-/* eventos do quadro (bitmask) — úteis para sons/efeitos depois */
+/* ============================================================
+ * EVENTOS DO QUADRO
+ *
+ * Os eventos podem ser utilizados posteriormente para sons,
+ * partículas e outros efeitos.
+ * ============================================================ */
+
 enum {
     EV_PULO        = 1 << 0,
     EV_TIRO        = 1 << 1,
@@ -72,77 +114,146 @@ enum {
     EV_SEM_ARMA    = 1 << 8
 };
 
+/* ============================================================
+ * MUNDO
+ * ============================================================ */
+
 typedef struct {
-    /* jogador */
+    /* ---------- Jogador ---------- */
+
     float alt;
-    float velY;                   /* altura do pé e velocidade vertical */
-    bool  noChao;
-    bool  abaixado;
-    int   vidas;
-    float invulneravel;           /* segundos restantes */
+    float velY;
+
+    bool noChao;
+    bool abaixado;
+
+    int vidas;
+
+    float invulneravel;
     float cooldownTiro;
 
-    /* proposições */
-    Valoracao val;                /* valor atual de P, Q e R */
+    /* ---------- Proposições ---------- */
+
+    Valoracao val;
+
     float energia;
-    float sobrecarga;             /* >0: não dá para mexer nas proposições */
-    bool  tautologia;             /* próximo portão abre sempre */
+    float sobrecarga;
+
+    bool tautologia;
+
+    /* ---------- Desafio lógico ---------- */
 
     /*
-     * Desafio lógico do portão.
-     *
-     * Quando decisaoPortao é verdadeira, a corrida fica congelada.
-     * O jogador pode alterar P, Q e R e confirmar com Enter.
-     * Se o tempo acabar, a valoração atual é confirmada automaticamente.
+     * Quando decisaoPortao é verdadeira, a corrida fica
+     * congelada para o jogador configurar P, Q e R.
      */
-    bool  decisaoPortao;
+    bool decisaoPortao;
+
+    /*
+     * Segundos restantes para confirmar a resposta.
+     */
     float tempoDecisaoPortao;
 
-    /* coleções de objetos */
+    /* ---------- Sequência de vitória ---------- */
+
+    /*
+     * É ativada quando o oitavo portão é resolvido corretamente.
+     *
+     * Enquanto estiver ativa:
+     * - o resultado continua como RES_JOGANDO;
+     * - não surgem novos inimigos ou portões;
+     * - os controles de combate são ignorados;
+     * - P, Q e R permanecem falsas;
+     * - o cenário continua avançando;
+     * - o portão pode passar pelo dinossauro;
+     * - o renderizador realiza a comemoração.
+     */
+    bool sequenciaVitoria;
+
+    /*
+     * Tempo já transcorrido desde o início da sequência.
+     *
+     * Começa em zero e avança até TEMPO_SEQUENCIA_VITORIA.
+     */
+    float tempoSequenciaVitoria;
+
+    /* ---------- Coleções ---------- */
+
     Entidade ents[MAX_ENTIDADES];
-    int      nEnts;
+    int nEnts;
 
     Tiro tiros[MAX_TIROS];
-    int  nTiros;
+    int nTiros;
 
-    /* progresso */
+    /* ---------- Progresso ---------- */
+
     float velocidade;
     float distancia;
     float tempo;
     float pontosDist;
-    int   bonus;
-    int   abatidos;
-    int   portoesOk;
-    int   portoesErro;
-    int   portoesGerados;
-    float distProx;
-    float distProxPortao;         /* distância até o próximo objeto/portão */
 
-    /* diversos */
-    uint32_t  rng;
+    int bonus;
+    int abatidos;
+
+    int portoesOk;
+    int portoesErro;
+    int portoesGerados;
+
+    float distProx;
+    float distProxPortao;
+
+    /* ---------- Diversos ---------- */
+
+    uint32_t rng;
     Resultado resultado;
-    unsigned  eventos;
-    char      msg[56];
-    float     msgTempo;
+    unsigned eventos;
+
+    char msg[56];
+    float msgTempo;
 } Mundo;
 
-Mundo mundo_novo(uint32_t semente);
-Mundo mundo_atualiza(Mundo m, Entrada in, float dt);
+/* ============================================================
+ * API PÚBLICA
+ * ============================================================ */
 
-int       mundo_pontos(const Mundo *m);
-Rectangle mundo_caixa_jogador(const Mundo *m);
+Mundo mundo_novo(uint32_t semente);
+
+Mundo mundo_atualiza(
+    Mundo m,
+    Entrada in,
+    float dt
+);
+
+int mundo_pontos(const Mundo *m);
+
+Rectangle mundo_caixa_jogador(
+    const Mundo *m
+);
 
 /*
- * Retorna o portão ainda não avaliado que está mais à frente,
- * ou NULL quando não existe portão ativo.
+ * Retorna o portão ainda não avaliado mais próximo do jogador.
+ * Retorna NULL quando não existe portão pendente.
  */
-const Entidade *mundo_proximo_portao(const Mundo *m);
+const Entidade *mundo_proximo_portao(
+    const Mundo *m
+);
 
-/* ---------- regras PURAS (fáceis de testar) ---------- */
+/* ============================================================
+ * REGRAS PURAS
+ * ============================================================ */
+
 float regra_velocidade_base(float tempo);
-float regra_energia(float energia, int ativas, float dt);
-int   regra_conta_ativas(Valoracao v);
-int   regra_pontos_inimigo(TipoEnt t);
-int   regra_nivel_formula(int portoesGerados);
+
+float regra_energia(
+    float energia,
+    int ativas,
+    float dt
+);
+
+int regra_conta_ativas(Valoracao v);
+
+int regra_pontos_inimigo(TipoEnt t);
+
+int regra_nivel_formula(int portoesGerados);
 
 #endif
