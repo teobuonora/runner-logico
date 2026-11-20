@@ -4,21 +4,8 @@
 #include <string.h>
 
 /* ============================================================
- * PALETA VISUAL
+ * PALETA FIXA DA INTERFACE
  * ============================================================ */
-
-static const Color COR_CEU_TOPO     = { 28, 31, 72, 255 };
-static const Color COR_CEU_BASE     = { 116, 67, 118, 255 };
-static const Color COR_SOL          = { 255, 205, 92, 255 };
-static const Color COR_SOL_BRILHO   = { 255, 218, 125, 55 };
-
-static const Color COR_MONTANHA_1   = { 66, 49, 92, 255 };
-static const Color COR_MONTANHA_2   = { 48, 42, 72, 255 };
-static const Color COR_MONTANHA_3   = { 35, 35, 55, 255 };
-
-static const Color COR_CHAO         = { 31, 31, 45, 255 };
-static const Color COR_CHAO_TOPO    = { 231, 134, 74, 255 };
-static const Color COR_CHAO_LUZ     = { 91, 78, 98, 255 };
 
 static const Color COR_PAINEL       = { 28, 30, 44, 245 };
 static const Color COR_PAINEL_CLARO = { 47, 50, 68, 245 };
@@ -35,6 +22,245 @@ static const Color COR_LARANJA      = { 239, 127, 58, 255 };
 static const Color COR_ROXO         = { 180, 100, 230, 255 };
 
 /* ============================================================
+ * TEMAS DO CENÁRIO
+ *
+ * Tema 0: início da partida.
+ * Temas 1 a 7: progresso pelos portões.
+ * Tema 8: cenário final.
+ * ============================================================ */
+
+typedef struct {
+    Color ceuTopo;
+    Color ceuBase;
+
+    Color sol;
+    Color solBrilho;
+
+    Color montanha1;
+    Color montanha2;
+    Color montanha3;
+
+    Color chao;
+    Color chaoTopo;
+    Color chaoLuz;
+
+    Color nuvem;
+    Color nuvemSombra;
+
+    Color estrela;
+    Color tecnologia;
+} TemaCenario;
+
+static const TemaCenario TEMAS_CENARIO[META_PORTOES + 1] = {
+    /* 0 portões: crepúsculo roxo */
+    {
+        { 28, 31, 72, 255 },
+        { 116, 67, 118, 255 },
+
+        { 255, 205, 92, 255 },
+        { 255, 218, 125, 55 },
+
+        { 66, 49, 92, 255 },
+        { 48, 42, 72, 255 },
+        { 35, 35, 55, 255 },
+
+        { 31, 31, 45, 255 },
+        { 231, 134, 74, 255 },
+        { 91, 78, 98, 255 },
+
+        { 207, 191, 213, 185 },
+        { 93, 75, 112, 125 },
+
+        { 241, 232, 220, 185 },
+        { 82, 155, 190, 160 }
+    },
+
+    /* 1 portão: noite azul */
+    {
+        { 15, 29, 72, 255 },
+        { 41, 78, 130, 255 },
+
+        { 184, 221, 255, 255 },
+        { 131, 198, 255, 48 },
+
+        { 37, 66, 110, 255 },
+        { 29, 48, 85, 255 },
+        { 23, 33, 59, 255 },
+
+        { 23, 30, 48, 255 },
+        { 71, 165, 221, 255 },
+        { 61, 91, 128, 255 },
+
+        { 181, 209, 232, 180 },
+        { 56, 82, 116, 125 },
+
+        { 225, 239, 255, 210 },
+        { 73, 191, 225, 170 }
+    },
+
+    /* 2 portões: violeta profundo */
+    {
+        { 35, 21, 76, 255 },
+        { 101, 54, 145, 255 },
+
+        { 226, 184, 255, 255 },
+        { 197, 126, 255, 52 },
+
+        { 72, 45, 111, 255 },
+        { 51, 34, 83, 255 },
+        { 34, 28, 57, 255 },
+
+        { 29, 27, 45, 255 },
+        { 177, 103, 228, 255 },
+        { 91, 65, 119, 255 },
+
+        { 210, 184, 229, 180 },
+        { 92, 65, 124, 125 },
+
+        { 238, 219, 255, 205 },
+        { 173, 105, 225, 170 }
+    },
+
+    /* 3 portões: magenta tecnológico */
+    {
+        { 55, 24, 74, 255 },
+        { 153, 58, 121, 255 },
+
+        { 255, 174, 205, 255 },
+        { 255, 103, 178, 52 },
+
+        { 105, 47, 104, 255 },
+        { 72, 36, 78, 255 },
+        { 43, 29, 55, 255 },
+
+        { 34, 27, 43, 255 },
+        { 232, 91, 157, 255 },
+        { 119, 62, 105, 255 },
+
+        { 226, 181, 214, 180 },
+        { 119, 65, 107, 125 },
+
+        { 255, 222, 238, 200 },
+        { 231, 88, 179, 170 }
+    },
+
+    /* 4 portões: pôr do sol alaranjado */
+    {
+        { 71, 35, 76, 255 },
+        { 219, 101, 70, 255 },
+
+        { 255, 220, 112, 255 },
+        { 255, 175, 73, 58 },
+
+        { 135, 67, 80, 255 },
+        { 91, 53, 72, 255 },
+        { 49, 38, 57, 255 },
+
+        { 40, 31, 42, 255 },
+        { 255, 150, 68, 255 },
+        { 129, 76, 77, 255 },
+
+        { 241, 197, 183, 185 },
+        { 141, 78, 85, 125 },
+
+        { 255, 231, 196, 165 },
+        { 255, 156, 68, 175 }
+    },
+
+    /* 5 portões: noite ciano */
+    {
+        { 12, 45, 65, 255 },
+        { 24, 111, 121, 255 },
+
+        { 172, 247, 236, 255 },
+        { 70, 238, 217, 50 },
+
+        { 33, 91, 105, 255 },
+        { 25, 67, 82, 255 },
+        { 20, 43, 58, 255 },
+
+        { 21, 35, 44, 255 },
+        { 47, 214, 188, 255 },
+        { 53, 105, 111, 255 },
+
+        { 175, 225, 220, 180 },
+        { 55, 105, 110, 125 },
+
+        { 213, 255, 248, 210 },
+        { 52, 224, 200, 175 }
+    },
+
+    /* 6 portões: aurora verde */
+    {
+        { 19, 51, 60, 255 },
+        { 55, 139, 103, 255 },
+
+        { 205, 255, 178, 255 },
+        { 119, 255, 154, 52 },
+
+        { 44, 103, 84, 255 },
+        { 31, 75, 68, 255 },
+        { 23, 48, 52, 255 },
+
+        { 24, 38, 40, 255 },
+        { 94, 226, 137, 255 },
+        { 59, 113, 83, 255 },
+
+        { 186, 226, 198, 180 },
+        { 60, 110, 82, 125 },
+
+        { 223, 255, 225, 195 },
+        { 84, 230, 147, 175 }
+    },
+
+    /* 7 portões: aurora dourada */
+    {
+        { 60, 56, 83, 255 },
+        { 205, 139, 76, 255 },
+
+        { 255, 239, 137, 255 },
+        { 255, 214, 82, 62 },
+
+        { 129, 91, 91, 255 },
+        { 89, 67, 78, 255 },
+        { 48, 45, 58, 255 },
+
+        { 42, 37, 43, 255 },
+        { 255, 198, 74, 255 },
+        { 127, 98, 70, 255 },
+
+        { 236, 216, 192, 185 },
+        { 126, 99, 91, 125 },
+
+        { 255, 242, 196, 185 },
+        { 255, 197, 74, 180 }
+    },
+
+    /* 8 portões: céu final luminoso */
+    {
+        { 46, 99, 164, 255 },
+        { 114, 211, 205, 255 },
+
+        { 255, 242, 158, 255 },
+        { 255, 236, 129, 70 },
+
+        { 82, 150, 162, 255 },
+        { 61, 112, 134, 255 },
+        { 41, 72, 96, 255 },
+
+        { 30, 47, 57, 255 },
+        { 255, 215, 89, 255 },
+        { 78, 139, 139, 255 },
+
+        { 229, 241, 235, 200 },
+        { 107, 165, 171, 125 },
+
+        { 255, 248, 209, 175 },
+        { 255, 223, 92, 185 }
+    }
+};
+
+/* ============================================================
  * AUXILIARES
  * ============================================================ */
 
@@ -47,6 +273,117 @@ static Color misturaCor(Color a, Color b, float t) {
     resultado.a = (unsigned char)(a.a + (b.a - a.a) * t);
 
     return resultado;
+}
+
+static float limita01(float valor) {
+    if (valor < 0.0f) {
+        return 0.0f;
+    }
+
+    if (valor > 1.0f) {
+        return 1.0f;
+    }
+
+    return valor;
+}
+
+static float suavizaTransicao(float t) {
+    t = limita01(t);
+
+    return t * t * (3.0f - 2.0f * t);
+}
+
+static TemaCenario misturaTema(
+    TemaCenario anterior,
+    TemaCenario atual,
+    float t
+) {
+    TemaCenario resultado;
+
+    t = suavizaTransicao(t);
+
+    resultado.ceuTopo =
+        misturaCor(anterior.ceuTopo, atual.ceuTopo, t);
+
+    resultado.ceuBase =
+        misturaCor(anterior.ceuBase, atual.ceuBase, t);
+
+    resultado.sol =
+        misturaCor(anterior.sol, atual.sol, t);
+
+    resultado.solBrilho =
+        misturaCor(anterior.solBrilho, atual.solBrilho, t);
+
+    resultado.montanha1 =
+        misturaCor(anterior.montanha1, atual.montanha1, t);
+
+    resultado.montanha2 =
+        misturaCor(anterior.montanha2, atual.montanha2, t);
+
+    resultado.montanha3 =
+        misturaCor(anterior.montanha3, atual.montanha3, t);
+
+    resultado.chao =
+        misturaCor(anterior.chao, atual.chao, t);
+
+    resultado.chaoTopo =
+        misturaCor(anterior.chaoTopo, atual.chaoTopo, t);
+
+    resultado.chaoLuz =
+        misturaCor(anterior.chaoLuz, atual.chaoLuz, t);
+
+    resultado.nuvem =
+        misturaCor(anterior.nuvem, atual.nuvem, t);
+
+    resultado.nuvemSombra =
+        misturaCor(
+            anterior.nuvemSombra,
+            atual.nuvemSombra,
+            t
+        );
+
+    resultado.estrela =
+        misturaCor(anterior.estrela, atual.estrela, t);
+
+    resultado.tecnologia =
+        misturaCor(
+            anterior.tecnologia,
+            atual.tecnologia,
+            t
+        );
+
+    return resultado;
+}
+
+static TemaCenario temaAtual(const Mundo *m) {
+    int indice = m->portoesOk;
+
+    if (indice < 0) {
+        indice = 0;
+    }
+
+    if (indice > META_PORTOES) {
+        indice = META_PORTOES;
+    }
+
+    bool transicaoAtiva =
+        indice > 0 &&
+        m->msgTempo > 0.0f &&
+        strstr(m->msg, "PORTAO ABERTO") != NULL;
+
+    if (!transicaoAtiva) {
+        return TEMAS_CENARIO[indice];
+    }
+
+    float progresso =
+        1.0f -
+        m->msgTempo / 1.8f;
+
+    return misturaTema(
+        TEMAS_CENARIO[indice - 1],
+        TEMAS_CENARIO[indice],
+        progresso
+    );
 }
 
 static void textoCentro(
@@ -115,13 +452,23 @@ static void circuloBrilho(
  * CENÁRIO
  * ============================================================ */
 
-static void desenhaCeu(void) {
+static void desenhaCeu(const TemaCenario *tema) {
     const int faixas = 60;
-    const int alturaFaixa = (int)CHAO_Y / faixas + 1;
+
+    const int alturaFaixa =
+        (int)CHAO_Y / faixas + 1;
 
     for (int i = 0; i < faixas; i++) {
-        float t = (float)i / (float)(faixas - 1);
-        Color cor = misturaCor(COR_CEU_TOPO, COR_CEU_BASE, t);
+        float t =
+            (float)i /
+            (float)(faixas - 1);
+
+        Color cor =
+            misturaCor(
+                tema->ceuTopo,
+                tema->ceuBase,
+                t
+            );
 
         DrawRectangle(
             0,
@@ -133,11 +480,36 @@ static void desenhaCeu(void) {
     }
 }
 
-static void desenhaEstrelas(const Mundo *m) {
+static void desenhaEstrelas(
+    const Mundo *m,
+    const TemaCenario *tema
+) {
+    int luminosidade =
+        (
+            tema->ceuTopo.r +
+            tema->ceuTopo.g +
+            tema->ceuTopo.b
+        ) /
+        3;
+
+    float visibilidade =
+        1.0f -
+        (float)luminosidade /
+        210.0f;
+
+    visibilidade =
+        limita01(visibilidade);
+
     for (int i = 0; i < 28; i++) {
-        float baseX = (float)((i * 83 + 43) % LARGURA_TELA);
+        float baseX =
+            (float)(
+                (i * 83 + 43) %
+                LARGURA_TELA
+            );
+
         float x = fmodf(
-            baseX - m->distancia * 0.015f,
+            baseX -
+            m->distancia * 0.015f,
             (float)LARGURA_TELA
         );
 
@@ -145,76 +517,119 @@ static void desenhaEstrelas(const Mundo *m) {
             x += LARGURA_TELA;
         }
 
-        int y = 28 + (i * 47) % 185;
-        float raio = (i % 4 == 0) ? 1.8f : 1.0f;
+        int y =
+            28 +
+            (i * 47) % 185;
+
+        float raio =
+            (i % 4 == 0)
+                ? 1.8f
+                : 1.0f;
+
+        Color estrela =
+            tema->estrela;
+
+        estrela.a =
+            (unsigned char)(
+                estrela.a *
+                (
+                    0.25f +
+                    visibilidade * 0.75f
+                )
+            );
 
         DrawCircle(
             (int)x,
             y,
             raio,
-            (Color){ 241, 232, 220, 185 }
+            estrela
         );
     }
 }
 
-static void desenhaSol(void) {
+static void desenhaSol(
+    const TemaCenario *tema,
+    int progresso
+) {
+    int solX =
+        785 -
+        progresso * 11;
+
+    int solY =
+        126 -
+        progresso * 4;
+
+    float raio =
+        44.0f +
+        progresso * 0.8f;
+
     DrawCircle(
-        785,
-        126,
-        63.0f,
-        COR_SOL_BRILHO
+        solX,
+        solY,
+        raio + 19.0f,
+        tema->solBrilho
     );
 
     DrawCircle(
-        785,
-        126,
-        44.0f,
-        COR_SOL
+        solX,
+        solY,
+        raio,
+        tema->sol
     );
 
+    Color reflexo =
+        misturaCor(
+            tema->sol,
+            WHITE,
+            0.45f
+        );
+
+    reflexo.a = 135;
+
     DrawCircle(
-        770,
-        111,
+        solX - 15,
+        solY - 15,
         13.0f,
-        (Color){ 255, 230, 151, 130 }
+        reflexo
     );
 }
 
 static void desenhaNuvem(
     float x,
     float y,
-    float escala
+    float escala,
+    const TemaCenario *tema
 ) {
-    Color sombra = { 93, 75, 112, 125 };
-    Color nuvem = { 207, 191, 213, 185 };
-
     DrawEllipse(
         (int)x + 28,
         (int)y + 10,
         35.0f * escala,
         10.0f * escala,
-        sombra
+        tema->nuvemSombra
     );
 
     DrawCircle(
         (int)x,
         (int)y,
         15.0f * escala,
-        nuvem
+        tema->nuvem
     );
 
     DrawCircle(
-        (int)x + (int)(20.0f * escala),
-        (int)y - (int)(8.0f * escala),
+        (int)x +
+            (int)(20.0f * escala),
+        (int)y -
+            (int)(8.0f * escala),
         21.0f * escala,
-        nuvem
+        tema->nuvem
     );
 
     DrawCircle(
-        (int)x + (int)(43.0f * escala),
+        (int)x +
+            (int)(43.0f * escala),
         (int)y,
         17.0f * escala,
-        nuvem
+        tema->nuvem
     );
 
     DrawRectangle(
@@ -222,16 +637,22 @@ static void desenhaNuvem(
         (int)y,
         (int)(43.0f * escala),
         (int)(17.0f * escala),
-        nuvem
+        tema->nuvem
     );
 }
 
-static void desenhaNuvens(const Mundo *m) {
+static void desenhaNuvens(
+    const Mundo *m,
+    const TemaCenario *tema
+) {
     for (int i = 0; i < 5; i++) {
-        float ciclo = LARGURA_TELA + 240.0f;
+        float ciclo =
+            LARGURA_TELA +
+            240.0f;
 
         float x = fmodf(
-            i * 245.0f - m->distancia * 0.07f,
+            i * 245.0f -
+            m->distancia * 0.07f,
             ciclo
         );
 
@@ -241,10 +662,20 @@ static void desenhaNuvens(const Mundo *m) {
 
         x -= 100.0f;
 
-        float y = 72.0f + (float)((i * 43) % 105);
-        float escala = 0.75f + (float)(i % 3) * 0.12f;
+        float y =
+            72.0f +
+            (float)((i * 43) % 105);
 
-        desenhaNuvem(x, y, escala);
+        float escala =
+            0.75f +
+            (float)(i % 3) * 0.12f;
+
+        desenhaNuvem(
+            x,
+            y,
+            escala,
+            tema
+        );
     }
 }
 
@@ -261,8 +692,14 @@ static void desenhaMontanhas(
         (float)largura
     );
 
-    for (int i = -2; i < LARGURA_TELA / largura + 3; i++) {
-        float x = i * largura - deslocamento;
+    for (
+        int i = -2;
+        i < LARGURA_TELA / largura + 3;
+        i++
+    ) {
+        float x =
+            i * largura -
+            deslocamento;
 
         Vector2 esquerda = {
             x,
@@ -288,22 +725,37 @@ static void desenhaMontanhas(
     }
 }
 
-static void desenhaEstruturasTecnologicas(const Mundo *m) {
+static void desenhaEstruturasTecnologicas(
+    const Mundo *m,
+    const TemaCenario *tema
+) {
     float deslocamento = fmodf(
         m->distancia * 0.18f,
         230.0f
     );
 
     for (int i = -1; i < 6; i++) {
-        float x = i * 230.0f - deslocamento;
-        int altura = 35 + (i & 1) * 24;
+        float x =
+            i * 230.0f -
+            deslocamento;
+
+        int altura =
+            35 +
+            (i & 1) * 24;
+
+        Color torre =
+            misturaCor(
+                tema->montanha3,
+                COR_PAINEL,
+                0.35f
+            );
 
         DrawRectangle(
             (int)x,
             (int)CHAO_Y - altura,
             10,
             altura,
-            (Color){ 41, 40, 59, 255 }
+            torre
         );
 
         DrawRectangle(
@@ -311,25 +763,28 @@ static void desenhaEstruturasTecnologicas(const Mundo *m) {
             (int)CHAO_Y - altura,
             24,
             5,
-            COR_MONTANHA_3
+            tema->montanha3
         );
 
         DrawCircle(
             (int)x + 5,
             (int)CHAO_Y - altura - 6,
             5.0f,
-            (Color){ 82, 155, 190, 160 }
+            tema->tecnologia
         );
     }
 }
 
-static void desenhaChao(const Mundo *m) {
+static void desenhaChao(
+    const Mundo *m,
+    const TemaCenario *tema
+) {
     DrawRectangle(
         0,
         (int)CHAO_Y,
         LARGURA_TELA,
         ALTURA_TELA - (int)CHAO_Y,
-        COR_CHAO
+        tema->chao
     );
 
     DrawRectangle(
@@ -337,20 +792,28 @@ static void desenhaChao(const Mundo *m) {
         (int)CHAO_Y,
         LARGURA_TELA,
         4,
-        COR_CHAO_TOPO
+        tema->chaoTopo
     );
+
+    Color faixaInferior =
+        misturaCor(
+            tema->chao,
+            tema->chaoTopo,
+            0.42f
+        );
 
     DrawRectangle(
         0,
         (int)CHAO_Y + 4,
         LARGURA_TELA,
         3,
-        (Color){ 105, 57, 74, 255 }
+        faixaInferior
     );
 
     for (int i = 0; i < 28; i++) {
         float x = fmodf(
-            i * 52.0f - m->distancia,
+            i * 52.0f -
+            m->distancia,
             (float)LARGURA_TELA
         );
 
@@ -358,21 +821,35 @@ static void desenhaChao(const Mundo *m) {
             x += LARGURA_TELA;
         }
 
-        int y = (int)CHAO_Y + 14 + (i % 4) * 9;
-        int largura = 11 + (i % 3) * 8;
+        int y =
+            (int)CHAO_Y +
+            14 +
+            (i % 4) * 9;
+
+        int largura =
+            11 +
+            (i % 3) * 8;
 
         DrawRectangle(
             (int)x,
             y,
             largura,
             2,
-            COR_CHAO_LUZ
+            tema->chaoLuz
         );
     }
 
+    Color linhaFundo =
+        misturaCor(
+            tema->chao,
+            tema->chaoLuz,
+            0.45f
+        );
+
     for (int i = 0; i < 12; i++) {
         float x = fmodf(
-            i * 95.0f - m->distancia * 1.25f,
+            i * 95.0f -
+            m->distancia * 1.25f,
             (float)LARGURA_TELA
         );
 
@@ -390,16 +867,30 @@ static void desenhaChao(const Mundo *m) {
                 CHAO_Y + 64.0f
             },
             2.0f,
-            (Color){ 63, 61, 81, 255 }
+            linhaFundo
         );
     }
 }
 
 static void desenhaCenario(const Mundo *m) {
-    desenhaCeu();
-    desenhaEstrelas(m);
-    desenhaSol();
-    desenhaNuvens(m);
+    TemaCenario tema =
+        temaAtual(m);
+
+    int progresso =
+        m->portoesOk;
+
+    if (progresso < 0) {
+        progresso = 0;
+    }
+
+    if (progresso > META_PORTOES) {
+        progresso = META_PORTOES;
+    }
+
+    desenhaCeu(&tema);
+    desenhaEstrelas(m, &tema);
+    desenhaSol(&tema, progresso);
+    desenhaNuvens(m, &tema);
 
     desenhaMontanhas(
         m,
@@ -407,7 +898,7 @@ static void desenhaCenario(const Mundo *m) {
         380,
         135,
         300,
-        COR_MONTANHA_1
+        tema.montanha1
     );
 
     desenhaMontanhas(
@@ -416,7 +907,7 @@ static void desenhaCenario(const Mundo *m) {
         410,
         108,
         230,
-        COR_MONTANHA_2
+        tema.montanha2
     );
 
     desenhaMontanhas(
@@ -425,11 +916,18 @@ static void desenhaCenario(const Mundo *m) {
         440,
         78,
         175,
-        COR_MONTANHA_3
+        tema.montanha3
     );
 
-    desenhaEstruturasTecnologicas(m);
-    desenhaChao(m);
+    desenhaEstruturasTecnologicas(
+        m,
+        &tema
+    );
+
+    desenhaChao(
+        m,
+        &tema
+    );
 }
 
 /* ============================================================
@@ -460,24 +958,28 @@ static void desenhaJogador(const Mundo *m) {
         return;
     }
 
-    Rectangle r = mundo_caixa_jogador(m);
+    Rectangle r =
+        mundo_caixa_jogador(m);
 
-    bool escudo = m->val.v[PROP_ESCUDO];
-    bool arma = m->val.v[PROP_ARMA];
-    bool turbo = m->val.v[PROP_TURBO];
+    bool escudo =
+        m->val.v[PROP_ESCUDO];
+
+    bool arma =
+        m->val.v[PROP_ARMA];
+
+    bool turbo =
+        m->val.v[PROP_TURBO];
 
     if (turbo) {
         desenhaTurbo(r);
     }
-
-    Color sombra = { 19, 31, 39, 145 };
 
     DrawEllipse(
         (int)(r.x + 18.0f),
         (int)CHAO_Y + 3,
         34.0f,
         6.0f,
-        sombra
+        (Color){ 19, 31, 39, 145 }
     );
 
     if (m->abaixado) {
@@ -598,8 +1100,11 @@ static void desenhaJogador(const Mundo *m) {
             m->noChao &&
             ((int)(m->tempo * 12.0f) % 2 == 0);
 
-        int perna1 = passo ? 6 : 1;
-        int perna2 = passo ? 1 : 6;
+        int perna1 =
+            passo ? 6 : 1;
+
+        int perna2 =
+            passo ? 1 : 6;
 
         DrawRectangle(
             (int)r.x + 8,
@@ -659,7 +1164,9 @@ static void desenhaJogador(const Mundo *m) {
     }
 
     if (escudo) {
-        Color preenchimento = COR_AZUL;
+        Color preenchimento =
+            COR_AZUL;
+
         preenchimento.a = 34;
 
         DrawCircle(
@@ -690,9 +1197,14 @@ static void desenhaJogador(const Mundo *m) {
  * ============================================================ */
 
 static void desenhaCacto(Rectangle r) {
-    Color sombra = { 24, 70, 62, 255 };
-    Color corpo = { 45, 142, 104, 255 };
-    Color detalhe = { 85, 190, 132, 255 };
+    Color sombra =
+        { 24, 70, 62, 255 };
+
+    Color corpo =
+        { 45, 142, 104, 255 };
+
+    Color detalhe =
+        { 85, 190, 132, 255 };
 
     DrawEllipse(
         (int)(r.x + r.width / 2.0f),
@@ -772,14 +1284,16 @@ static void desenhaCacto(Rectangle r) {
 }
 
 static void desenhaAndarilho(const Entidade *e) {
-    Rectangle r = e->caixa;
+    Rectangle r =
+        e->caixa;
 
     Color corpo =
         e->vida >= 2
             ? COR_ROXO
             : (Color){ 218, 135, 239, 255 };
 
-    Color escuro = { 91, 45, 130, 255 };
+    Color escuro =
+        { 91, 45, 130, 255 };
 
     DrawEllipse(
         (int)(r.x + r.width / 2.0f),
@@ -850,14 +1364,20 @@ static void desenhaAndarilho(const Entidade *e) {
 }
 
 static void desenhaVoador(const Entidade *e) {
-    Rectangle r = e->caixa;
+    Rectangle r =
+        e->caixa;
 
     bool asaAlta =
         ((int)(e->anim * 10.0f) % 2) == 0;
 
-    Color corpo = COR_LARANJA;
-    Color asa = { 255, 180, 89, 255 };
-    Color escuro = { 130, 58, 42, 255 };
+    Color corpo =
+        COR_LARANJA;
+
+    Color asa =
+        { 255, 180, 89, 255 };
+
+    Color escuro =
+        { 130, 58, 42, 255 };
 
     DrawEllipse(
         (int)(r.x + r.width / 2.0f),
@@ -882,7 +1402,12 @@ static void desenhaVoador(const Entidade *e) {
         r.y + r.height / 2.0f
     };
 
-    DrawTriangle(p1, p2, p3, asa);
+    DrawTriangle(
+        p1,
+        p2,
+        p3,
+        asa
+    );
 
     DrawTriangle(
         (Vector2){
@@ -916,10 +1441,14 @@ static void desenhaVoador(const Entidade *e) {
 }
 
 static void desenhaPowerUp(const Entidade *e) {
-    Rectangle r = e->caixa;
+    Rectangle r =
+        e->caixa;
 
-    Color cor = COR_AMARELO;
-    const char *letra = "E";
+    Color cor =
+        COR_AMARELO;
+
+    const char *letra =
+        "E";
 
     if (e->tipo == ENT_PU_VIDA) {
         cor = COR_VERMELHO;
@@ -931,10 +1460,15 @@ static void desenhaPowerUp(const Entidade *e) {
         letra = "T";
     }
 
-    int centroX = (int)(r.x + r.width / 2.0f);
-    int centroY = (int)(r.y + r.height / 2.0f);
+    int centroX =
+        (int)(r.x + r.width / 2.0f);
 
-    Color aura = cor;
+    int centroY =
+        (int)(r.y + r.height / 2.0f);
+
+    Color aura =
+        cor;
+
     aura.a = 35;
 
     DrawCircle(
@@ -962,7 +1496,12 @@ static void desenhaPowerUp(const Entidade *e) {
         centroX,
         centroY,
         21.0f,
-        (Color){ cor.r, cor.g, cor.b, 100 }
+        (Color){
+            cor.r,
+            cor.g,
+            cor.b,
+            100
+        }
     );
 
     textoCentro(
@@ -979,21 +1518,32 @@ static void desenhaPowerUp(const Entidade *e) {
  * ============================================================ */
 
 static void desenhaPortao(const Entidade *e) {
-    Rectangle r = e->caixa;
+    Rectangle r =
+        e->caixa;
 
-    Color cor = COR_AZUL;
+    Color cor =
+        COR_AZUL;
 
     if (e->avaliado) {
-        cor = e->resultado
-            ? COR_VERDE
-            : COR_VERMELHO;
+        cor =
+            e->resultado
+                ? COR_VERDE
+                : COR_VERMELHO;
     }
 
-    float colunaLargura = 14.0f;
-    float arcoAltura = 17.0f;
+    float colunaLargura =
+        14.0f;
 
-    Color campo = cor;
-    campo.a = e->avaliado ? 70 : 45;
+    float arcoAltura =
+        17.0f;
+
+    Color campo =
+        cor;
+
+    campo.a =
+        e->avaliado
+            ? 70
+            : 45;
 
     DrawRectangle(
         (int)r.x - 8,
@@ -1082,7 +1632,12 @@ static void desenhaPortao(const Entidade *e) {
                 y + 10.0f
             },
             1.0f,
-            (Color){ cor.r, cor.g, cor.b, 90 }
+            (Color){
+                cor.r,
+                cor.g,
+                cor.b,
+                90
+            }
         );
     }
 
@@ -1097,8 +1652,11 @@ static void desenhaPortao(const Entidade *e) {
         sizeof texto
     );
 
-    int tamanho = 22;
-    int largura = MeasureText(texto, tamanho) + 28;
+    int tamanho =
+        22;
+
+    int largura =
+        MeasureText(texto, tamanho) + 28;
 
     int x =
         (int)(
@@ -1157,9 +1715,12 @@ static void desenhaEntidade(const Entidade *e) {
 }
 
 static void desenhaTiro(const Tiro *tiro) {
-    Rectangle r = tiro->caixa;
+    Rectangle r =
+        tiro->caixa;
 
-    Color brilho = COR_CIANO;
+    Color brilho =
+        COR_CIANO;
+
     brilho.a = 45;
 
     DrawRectangle(
@@ -1213,9 +1774,18 @@ static void desenhaCoracao(
     );
 
     DrawTriangle(
-        (Vector2){ (float)x - 11.0f, (float)y + 2.0f },
-        (Vector2){ (float)x + 11.0f, (float)y + 2.0f },
-        (Vector2){ (float)x, (float)y + 14.0f },
+        (Vector2){
+            (float)x - 11.0f,
+            (float)y + 2.0f
+        },
+        (Vector2){
+            (float)x + 11.0f,
+            (float)y + 2.0f
+        },
+        (Vector2){
+            (float)x,
+            (float)y + 14.0f
+        },
         cor
     );
 }
@@ -1227,10 +1797,17 @@ static void desenhaTabela(
     Formula formula =
         catalogoFormula(portao->formulaId);
 
-    int x = LARGURA_TELA - 190;
-    int y = 79;
-    int largura = 176;
-    int altura = 151;
+    int x =
+        LARGURA_TELA - 190;
+
+    int y =
+        79;
+
+    int largura =
+        176;
+
+    int altura =
+        151;
 
     painel(
         x,
@@ -1330,7 +1907,8 @@ static void desenhaCartao(
         { 180, 100, 230, 255 }
     };
 
-    bool ligado = m->val.v[indice];
+    bool ligado =
+        m->val.v[indice];
 
     Color fundo =
         ligado
@@ -1703,7 +2281,10 @@ static void desenhaHud(
             mostraTabela &&
             !m->decisaoPortao
         ) {
-            desenhaTabela(m, portao);
+            desenhaTabela(
+                m,
+                portao
+            );
         }
     } else {
         DrawText(
@@ -1821,8 +2402,11 @@ static void desenhaDesafioLogico(const Mundo *m) {
     };
 
     for (int i = 0; i < NUM_PROPS; i++) {
-        int x = 310 + i * 115;
-        bool ligado = m->val.v[i];
+        int x =
+            310 + i * 115;
+
+        bool ligado =
+            m->val.v[i];
 
         painel(
             x,
@@ -1867,20 +2451,18 @@ static void desenhaDesafioLogico(const Mundo *m) {
         m->tempoDecisaoPortao /
         TEMPO_DECISAO_PORTAO;
 
-    if (proporcao < 0.0f) {
-        proporcao = 0.0f;
-    }
+    proporcao =
+        limita01(proporcao);
 
-    if (proporcao > 1.0f) {
-        proporcao = 1.0f;
-    }
-
-    Color corTempo = COR_VERDE;
+    Color corTempo =
+        COR_VERDE;
 
     if (m->tempoDecisaoPortao <= 2.0f) {
-        corTempo = COR_VERMELHO;
+        corTempo =
+            COR_VERMELHO;
     } else if (m->tempoDecisaoPortao <= 3.5f) {
-        corTempo = COR_AMARELO;
+        corTempo =
+            COR_AMARELO;
     }
 
     char tempo[32];
@@ -1944,11 +2526,15 @@ void render_mundo(
     desenhaCenario(m);
 
     for (int i = 0; i < m->nEnts; i++) {
-        desenhaEntidade(&m->ents[i]);
+        desenhaEntidade(
+            &m->ents[i]
+        );
     }
 
     for (int i = 0; i < m->nTiros; i++) {
-        desenhaTiro(&m->tiros[i]);
+        desenhaTiro(
+            &m->tiros[i]
+        );
     }
 
     desenhaJogador(m);
@@ -1962,13 +2548,25 @@ void render_mundo(
 
 static void desenhaFundoMenu(void) {
     Mundo demonstracao;
-    memset(&demonstracao, 0, sizeof demonstracao);
 
-    demonstracao.noChao = true;
-    demonstracao.energia = ENERGIA_MAX;
-    demonstracao.vidas = VIDAS_INICIAIS;
+    memset(
+        &demonstracao,
+        0,
+        sizeof demonstracao
+    );
 
-    desenhaCenario(&demonstracao);
+    demonstracao.noChao =
+        true;
+
+    demonstracao.energia =
+        ENERGIA_MAX;
+
+    demonstracao.vidas =
+        VIDAS_INICIAIS;
+
+    desenhaCenario(
+        &demonstracao
+    );
 
     DrawRectangle(
         0,
@@ -1986,9 +2584,18 @@ static void desenhaFundoMenu(void) {
     };
 
     DrawTriangle(
-        (Vector2){ jogador.x + 8.0f, jogador.y + 29.0f },
-        (Vector2){ jogador.x - 27.0f, jogador.y + 40.0f },
-        (Vector2){ jogador.x + 10.0f, jogador.y + 45.0f },
+        (Vector2){
+            jogador.x + 8.0f,
+            jogador.y + 29.0f
+        },
+        (Vector2){
+            jogador.x - 27.0f,
+            jogador.y + 40.0f
+        },
+        (Vector2){
+            jogador.x + 10.0f,
+            jogador.y + 45.0f
+        },
         COR_VERDE_ESCURO
     );
 

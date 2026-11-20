@@ -1,9 +1,11 @@
 /*
  * RUNNER LÓGICO — Projeto Integrador (PIF) + Lógica Proposicional
  *
- * main.c = o GAME LOOP (parte imperativa):
+ * main.c = GAME LOOP:
  *     entrada -> atualizar (mundo_atualiza) -> desenhar (render_*)
- * Nenhuma regra do jogo mora aqui: elas ficam em mundo.c / logica.c.
+ *
+ * Nenhuma regra do jogo mora aqui.
+ * As regras ficam em mundo.c e logica.c.
  */
 
 #include <time.h>
@@ -20,9 +22,27 @@ typedef enum {
     TELA_FIM
 } Tela;
 
+/*
+ * Tamanho inicial da janela.
+ *
+ * O jogo continua usando internamente LARGURA_TELA x ALTURA_TELA,
+ * definidos em config.h. A imagem é ampliada proporcionalmente.
+ */
+#define JANELA_INICIAL_LARGURA 1280
+#define JANELA_INICIAL_ALTURA   720
+
+/* ============================================================
+ * ENTRADA
+ * ============================================================ */
+
 static Entrada lerEntrada(void) {
     Entrada in;
-    memset(&in, 0, sizeof in);
+
+    memset(
+        &in,
+        0,
+        sizeof in
+    );
 
     in.pula =
         IsKeyPressed(KEY_SPACE) ||
@@ -39,13 +59,10 @@ static Entrada lerEntrada(void) {
         IsKeyDown(KEY_LEFT_CONTROL);
 
     /*
-     * Durante o desafio lógico, Enter confirma a valoração atual
-     * antes que os cinco segundos terminem.
-     *
-     * A decisão sobre aceitar ou ignorar essa entrada continua em
-     * mundo.c, mantendo a regra fora do game loop.
+     * Durante o desafio lógico, Enter confirma a resposta atual.
      */
-    in.confirma = IsKeyPressed(KEY_ENTER);
+    in.confirma =
+        IsKeyPressed(KEY_ENTER);
 
     in.alterna[0] =
         IsKeyPressed(KEY_ONE) ||
@@ -63,14 +80,127 @@ static Entrada lerEntrada(void) {
 }
 
 static uint32_t novaSemente(void) {
-    return (uint32_t)time(NULL) ^ (uint32_t)(GetTime() * 1000.0);
+    return
+        (uint32_t)time(NULL) ^
+        (uint32_t)(GetTime() * 1000.0);
 }
 
+/* ============================================================
+ * ESCALA DA JANELA
+ * ============================================================ */
+
+/*
+ * Calcula a maior escala possível sem distorcer a proporção
+ * original de 960 x 540.
+ */
+static float calculaEscala(void) {
+    float escalaX =
+        (float)GetScreenWidth() /
+        (float)LARGURA_TELA;
+
+    float escalaY =
+        (float)GetScreenHeight() /
+        (float)ALTURA_TELA;
+
+    return
+        escalaX < escalaY
+            ? escalaX
+            : escalaY;
+}
+
+/*
+ * Cria uma câmera que amplia e centraliza a área lógica do jogo.
+ *
+ * Exemplo:
+ *
+ * Janela:        1280 x 720
+ * Jogo interno:   960 x 540
+ * Escala:              1,333
+ *
+ * Todo o desenho continua usando as coordenadas originais.
+ */
+static Camera2D criaCameraEscalada(void) {
+    float escala =
+        calculaEscala();
+
+    float larguraDesenho =
+        LARGURA_TELA *
+        escala;
+
+    float alturaDesenho =
+        ALTURA_TELA *
+        escala;
+
+    float margemX =
+        (
+            GetScreenWidth() -
+            larguraDesenho
+        ) /
+        2.0f;
+
+    float margemY =
+        (
+            GetScreenHeight() -
+            alturaDesenho
+        ) /
+        2.0f;
+
+    Camera2D camera;
+
+    memset(
+        &camera,
+        0,
+        sizeof camera
+    );
+
+    camera.target =
+        (Vector2){ 0.0f, 0.0f };
+
+    camera.offset =
+        (Vector2){
+            margemX,
+            margemY
+        };
+
+    camera.rotation =
+        0.0f;
+
+    camera.zoom =
+        escala;
+
+    return camera;
+}
+
+/* ============================================================
+ * PROGRAMA PRINCIPAL
+ * ============================================================ */
+
 int main(void) {
+    /*
+     * Esta configuração precisa ser definida antes de InitWindow.
+     *
+     * FLAG_WINDOW_RESIZABLE permite:
+     * - redimensionar pelas bordas;
+     * - usar o botão de maximizar do Windows;
+     * - adaptar o jogo ao novo tamanho.
+     */
+    SetConfigFlags(
+        FLAG_WINDOW_RESIZABLE
+    );
+
     InitWindow(
-        LARGURA_TELA,
-        ALTURA_TELA,
+        JANELA_INICIAL_LARGURA,
+        JANELA_INICIAL_ALTURA,
         "Runner Logico"
+    );
+
+    /*
+     * Impede que a janela seja redimensionada para um tamanho
+     * menor que a resolução lógica original.
+     */
+    SetWindowMinSize(
+        LARGURA_TELA,
+        ALTURA_TELA
     );
 
     /*
@@ -78,105 +208,169 @@ int main(void) {
      * Durante o jogo, ESC volta ao menu.
      */
     SetExitKey(KEY_NULL);
+
     SetTargetFPS(60);
 
-    Tela tela = TELA_MENU;
-    Mundo mundo = mundo_novo(novaSemente());
+    Tela tela =
+        TELA_MENU;
 
-    int recorde = 0;
-    bool mostraTabela = true;
-    bool sair = false;
+    Mundo mundo =
+        mundo_novo(
+            novaSemente()
+        );
 
-    while (!sair && !WindowShouldClose()) {
-        float dt = GetFrameTime();
+    int recorde =
+        0;
+
+    bool mostraTabela =
+        true;
+
+    bool sair =
+        false;
+
+    while (
+        !sair &&
+        !WindowShouldClose()
+    ) {
+        float dt =
+            GetFrameTime();
 
         /*
-         * Evita saltos muito grandes na simulação caso a janela
-         * seja arrastada, perca foco ou trave por alguns instantes.
+         * Evita saltos grandes na simulação caso a janela trave,
+         * seja arrastada ou perca o foco.
          */
         if (dt > 0.05f) {
             dt = 0.05f;
         }
 
-        /* ---------- 1) ENTRADA + 2) ATUALIZAR ---------- */
+        /*
+         * F11 alterna entre janela e tela cheia.
+         */
+        if (IsKeyPressed(KEY_F11)) {
+            ToggleFullscreen();
+        }
+
+        /* ====================================================
+         * 1) ENTRADA
+         * 2) ATUALIZAÇÃO
+         * ==================================================== */
 
         switch (tela) {
             case TELA_MENU:
                 if (IsKeyPressed(KEY_ENTER)) {
-                    mundo = mundo_novo(novaSemente());
-                    tela = TELA_JOGO;
+                    mundo =
+                        mundo_novo(
+                            novaSemente()
+                        );
+
+                    tela =
+                        TELA_JOGO;
                 }
 
                 if (IsKeyPressed(KEY_ESCAPE)) {
-                    sair = true;
+                    sair =
+                        true;
                 }
                 break;
 
             case TELA_JOGO:
                 if (IsKeyPressed(KEY_T)) {
-                    mostraTabela = !mostraTabela;
+                    mostraTabela =
+                        !mostraTabela;
                 }
 
                 if (IsKeyPressed(KEY_P)) {
-                    tela = TELA_PAUSA;
+                    tela =
+                        TELA_PAUSA;
+
                     break;
                 }
 
                 if (IsKeyPressed(KEY_ESCAPE)) {
-                    tela = TELA_MENU;
+                    tela =
+                        TELA_MENU;
+
                     break;
                 }
 
-                /*
-                 * O Enter usado em lerEntrada() só será considerado
-                 * por mundo_atualiza() quando houver um desafio lógico.
-                 */
-                mundo = mundo_atualiza(
-                    mundo,
-                    lerEntrada(),
-                    dt
-                );
+                mundo =
+                    mundo_atualiza(
+                        mundo,
+                        lerEntrada(),
+                        dt
+                    );
 
-                if (mundo.resultado != RES_JOGANDO) {
-                    int pontos = mundo_pontos(&mundo);
+                if (
+                    mundo.resultado !=
+                    RES_JOGANDO
+                ) {
+                    int pontos =
+                        mundo_pontos(
+                            &mundo
+                        );
 
                     if (pontos > recorde) {
-                        recorde = pontos;
+                        recorde =
+                            pontos;
                     }
 
-                    tela = TELA_FIM;
+                    tela =
+                        TELA_FIM;
                 }
                 break;
 
             case TELA_PAUSA:
                 if (IsKeyPressed(KEY_P)) {
-                    tela = TELA_JOGO;
+                    tela =
+                        TELA_JOGO;
                 }
 
                 if (IsKeyPressed(KEY_ESCAPE)) {
-                    tela = TELA_MENU;
+                    tela =
+                        TELA_MENU;
                 }
                 break;
 
             case TELA_FIM:
                 if (IsKeyPressed(KEY_ENTER)) {
-                    mundo = mundo_novo(novaSemente());
-                    tela = TELA_JOGO;
+                    mundo =
+                        mundo_novo(
+                            novaSemente()
+                        );
+
+                    tela =
+                        TELA_JOGO;
                 }
 
                 if (IsKeyPressed(KEY_ESCAPE)) {
-                    tela = TELA_MENU;
+                    tela =
+                        TELA_MENU;
                 }
                 break;
         }
 
-        /* ---------- 3) DESENHAR ---------- */
-        /*
-         * As funções de renderização recebem o Mundo como const.
-         * Portanto, desenhar nunca altera o estado do jogo.
-         */
+        /* ====================================================
+         * 3) DESENHO
+         * ==================================================== */
+
+        Camera2D camera =
+            criaCameraEscalada();
 
         BeginDrawing();
+
+        /*
+         * Caso a proporção da janela seja diferente de 16:9,
+         * essas barras escuras aparecem nas áreas restantes.
+         */
+        ClearBackground(
+            (Color){ 10, 11, 20, 255 }
+        );
+
+        /*
+         * Tudo que for desenhado entre BeginMode2D e EndMode2D
+         * será ampliado e centralizado proporcionalmente.
+         */
+        BeginMode2D(camera);
 
         switch (tela) {
             case TELA_MENU:
@@ -184,23 +378,39 @@ int main(void) {
                 break;
 
             case TELA_JOGO:
-                render_mundo(&mundo, mostraTabela);
+                render_mundo(
+                    &mundo,
+                    mostraTabela
+                );
                 break;
 
             case TELA_PAUSA:
-                render_mundo(&mundo, mostraTabela);
+                render_mundo(
+                    &mundo,
+                    mostraTabela
+                );
+
                 render_pausa();
                 break;
 
             case TELA_FIM:
-                render_mundo(&mundo, mostraTabela);
-                render_fim(&mundo, recorde);
+                render_mundo(
+                    &mundo,
+                    mostraTabela
+                );
+
+                render_fim(
+                    &mundo,
+                    recorde
+                );
                 break;
         }
 
+        EndMode2D();
         EndDrawing();
     }
 
     CloseWindow();
+
     return 0;
 }
