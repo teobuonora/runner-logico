@@ -665,16 +665,65 @@ static void desenhaBotao(
 }
 
 /* ============================================================
- * CENÁRIO
+ * CENÁRIO: DIMENSÕES
+ *
+ * 0 - Deserto do Crepúsculo
+ * 1 - Floresta Bioluminescente
+ * 2 - Cidade Neon
+ * 3 - Mundo Glacial
+ * 4 - Dimensão Vulcânica
+ * 5 - Cidade Submersa
+ * 6 - Vazio Cósmico
+ * 7 - Inferno Lógico
+ * 8 - Reino Celestial
  * ============================================================ */
 
-static void desenhaCeu(
-    const TemaCenario *tema
+static Color corComAlpha(
+    Color cor,
+    float alpha
+) {
+    alpha =
+        limita01(alpha);
+
+    cor.a =
+        (unsigned char)(
+            (float)cor.a *
+            alpha
+        );
+
+    return cor;
+}
+
+static float deslocamentoCiclico(
+    float base,
+    float distancia,
+    float velocidade,
+    float ciclo
+) {
+    float x =
+        fmodf(
+            base -
+                distancia *
+                velocidade,
+            ciclo
+        );
+
+    if (x < 0.0f) {
+        x += ciclo;
+    }
+
+    return x;
+}
+
+static void desenhaGradienteVertical(
+    Color topo,
+    Color base,
+    float alpha
 ) {
     const int faixas =
-        60;
+        64;
 
-    const int alturaFaixa =
+    int alturaFaixa =
         (int)CHAO_Y /
         faixas +
         1;
@@ -686,13 +735,21 @@ static void desenhaCeu(
     ) {
         float progresso =
             (float)i /
-            (float)(faixas - 1);
+            (float)(
+                faixas - 1
+            );
 
         Color cor =
             misturaCor(
-                tema->ceuTopo,
-                tema->ceuBase,
+                topo,
+                base,
                 progresso
+            );
+
+        cor =
+            corComAlpha(
+                cor,
+                alpha
             );
 
         DrawRectangle(
@@ -705,251 +762,109 @@ static void desenhaCeu(
     }
 }
 
-static void desenhaEstrelas(
+static void desenhaChaoDimensao(
     const Mundo *m,
-    const TemaCenario *tema
+    Color fundo,
+    Color borda,
+    Color detalhe,
+    float alpha
 ) {
-    int luminosidade =
-        (
-            tema->ceuTopo.r +
-            tema->ceuTopo.g +
-            tema->ceuTopo.b
-        ) /
-        3;
-
-    float visibilidade =
-        1.0f -
-        (float)luminosidade /
-        210.0f;
-
-    visibilidade =
-        limita01(
-            visibilidade
+    fundo =
+        corComAlpha(
+            fundo,
+            alpha
         );
+
+    borda =
+        corComAlpha(
+            borda,
+            alpha
+        );
+
+    detalhe =
+        corComAlpha(
+            detalhe,
+            alpha
+        );
+
+    DrawRectangle(
+        0,
+        (int)CHAO_Y,
+        LARGURA_TELA,
+        ALTURA_TELA -
+            (int)CHAO_Y,
+        fundo
+    );
+
+    DrawRectangle(
+        0,
+        (int)CHAO_Y,
+        LARGURA_TELA,
+        5,
+        borda
+    );
+
+    DrawRectangle(
+        0,
+        (int)CHAO_Y + 5,
+        LARGURA_TELA,
+        3,
+        misturaCor(
+            fundo,
+            borda,
+            0.45f
+        )
+    );
 
     for (
         int i = 0;
         i < 28;
         i++
     ) {
-        float baseX =
-            (float)(
-                (i * 83 + 43) %
-                LARGURA_TELA
-            );
-
         float x =
-            fmodf(
-                baseX -
-                    m->distancia *
-                    0.015f,
+            deslocamentoCiclico(
+                i * 52.0f,
+                m->distancia,
+                1.0f,
                 (float)LARGURA_TELA
             );
 
-        if (x < 0.0f) {
-            x +=
-                LARGURA_TELA;
-        }
-
         int y =
-            28 +
-            (i * 47) %
-            185;
+            (int)CHAO_Y +
+            15 +
+            (i % 4) *
+            10;
 
-        float raio =
-            i % 4 == 0
-                ? 1.8f
-                : 1.0f;
+        int largura =
+            10 +
+            (i % 3) *
+            8;
 
-        Color estrela =
-            tema->estrela;
-
-        estrela.a =
-            (unsigned char)(
-                estrela.a *
-                (
-                    0.25f +
-                    visibilidade *
-                    0.75f
-                )
-            );
-
-        DrawCircle(
+        DrawRectangle(
             (int)x,
             y,
-            raio,
-            estrela
+            largura,
+            2,
+            detalhe
         );
     }
 }
 
-static void desenhaSol(
-    const TemaCenario *tema,
-    int progresso
-) {
-    int solX =
-        785 -
-        progresso * 11;
-
-    int solY =
-        126 -
-        progresso * 4;
-
-    float raio =
-        44.0f +
-        progresso * 0.8f;
-
-    DrawCircle(
-        solX,
-        solY,
-        raio + 19.0f,
-        tema->solBrilho
-    );
-
-    DrawCircle(
-        solX,
-        solY,
-        raio,
-        tema->sol
-    );
-
-    Color reflexo =
-        misturaCor(
-            tema->sol,
-            WHITE,
-            0.45f
-        );
-
-    reflexo.a =
-        135;
-
-    DrawCircle(
-        solX - 15,
-        solY - 15,
-        13.0f,
-        reflexo
-    );
-}
-
-static void desenhaNuvem(
-    float x,
-    float y,
-    float escala,
-    const TemaCenario *tema
-) {
-    DrawEllipse(
-        (int)x + 28,
-        (int)y + 10,
-        35.0f * escala,
-        10.0f * escala,
-        tema->nuvemSombra
-    );
-
-    DrawCircle(
-        (int)x,
-        (int)y,
-        15.0f * escala,
-        tema->nuvem
-    );
-
-    DrawCircle(
-        (int)x +
-            (int)(
-                20.0f *
-                escala
-            ),
-        (int)y -
-            (int)(
-                8.0f *
-                escala
-            ),
-        21.0f * escala,
-        tema->nuvem
-    );
-
-    DrawCircle(
-        (int)x +
-            (int)(
-                43.0f *
-                escala
-            ),
-        (int)y,
-        17.0f * escala,
-        tema->nuvem
-    );
-
-    DrawRectangle(
-        (int)x,
-        (int)y,
-        (int)(
-            43.0f *
-            escala
-        ),
-        (int)(
-            17.0f *
-            escala
-        ),
-        tema->nuvem
-    );
-}
-
-static void desenhaNuvens(
-    const Mundo *m,
-    const TemaCenario *tema
-) {
-    for (
-        int i = 0;
-        i < 5;
-        i++
-    ) {
-        float ciclo =
-            LARGURA_TELA +
-            240.0f;
-
-        float x =
-            fmodf(
-                i * 245.0f -
-                    m->distancia *
-                    0.07f,
-                ciclo
-            );
-
-        if (x < 0.0f) {
-            x += ciclo;
-        }
-
-        x -=
-            100.0f;
-
-        float y =
-            72.0f +
-            (float)(
-                (i * 43) %
-                105
-            );
-
-        float escala =
-            0.75f +
-            (float)(i % 3) *
-            0.12f;
-
-        desenhaNuvem(
-            x,
-            y,
-            escala,
-            tema
-        );
-    }
-}
-
-static void desenhaMontanhas(
+static void desenhaMontanhaDimensional(
     const Mundo *m,
     float velocidade,
     int baseY,
     int altura,
     int largura,
-    Color cor
+    Color cor,
+    float alpha
 ) {
+    Color corFinal =
+        corComAlpha(
+            cor,
+            alpha
+        );
+
     float deslocamento =
         fmodf(
             m->distancia *
@@ -988,117 +903,1204 @@ static void desenhaMontanhas(
                     largura,
                 (float)baseY
             },
-            cor
+            corFinal
         );
     }
 }
 
-static void desenhaEstruturasTecnologicas(
+/* ============================================================
+ * DIMENSÃO 0: DESERTO DO CREPÚSCULO
+ * ============================================================ */
+
+static void desenhaDeserto(
     const Mundo *m,
-    const TemaCenario *tema
+    float alpha
 ) {
-    float deslocamento =
-        fmodf(
-            m->distancia *
-                0.18f,
-            230.0f
+    desenhaGradienteVertical(
+        (Color){
+            28,
+            31,
+            72,
+            255
+        },
+        (Color){
+            184,
+            86,
+            94,
+            255
+        },
+        alpha
+    );
+
+    Color brilho =
+        corComAlpha(
+            (Color){
+                255,
+                192,
+                83,
+                55
+            },
+            alpha
+        );
+
+    Color sol =
+        corComAlpha(
+            (Color){
+                255,
+                211,
+                105,
+                255
+            },
+            alpha
+        );
+
+    DrawCircle(
+        785,
+        126,
+        64.0f,
+        brilho
+    );
+
+    DrawCircle(
+        785,
+        126,
+        43.0f,
+        sol
+    );
+
+    desenhaMontanhaDimensional(
+        m,
+        0.025f,
+        383,
+        132,
+        300,
+        (Color){
+            91,
+            58,
+            105,
+            255
+        },
+        alpha
+    );
+
+    desenhaMontanhaDimensional(
+        m,
+        0.055f,
+        416,
+        94,
+        225,
+        (Color){
+            68,
+            48,
+            81,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Dunas.
+     */
+    Color dunaDistante =
+        corComAlpha(
+            (Color){
+                139,
+                79,
+                91,
+                255
+            },
+            alpha
+        );
+
+    Color dunaProxima =
+        corComAlpha(
+            (Color){
+                92,
+                59,
+                72,
+                255
+            },
+            alpha
         );
 
     for (
         int i = -1;
+        i < 7;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 190.0f,
+                m->distancia,
+                0.10f,
+                1330.0f
+            ) -
+            190.0f;
+
+        DrawEllipse(
+            (int)x,
+            424,
+            145.0f,
+            38.0f,
+            dunaDistante
+        );
+    }
+
+    for (
+        int i = -1;
+        i < 8;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 150.0f,
+                m->distancia,
+                0.18f,
+                1200.0f
+            ) -
+            150.0f;
+
+        DrawEllipse(
+            (int)x,
+            440,
+            120.0f,
+            29.0f,
+            dunaProxima
+        );
+    }
+
+    /*
+     * Ruínas tecnológicas.
+     */
+    for (
+        int i = 0;
         i < 6;
         i++
     ) {
         float x =
-            i * 230.0f -
-            deslocamento;
+            deslocamentoCiclico(
+                i * 220.0f,
+                m->distancia,
+                0.17f,
+                1320.0f
+            ) -
+            80.0f;
+
+        Color pedra =
+            corComAlpha(
+                (Color){
+                    44,
+                    40,
+                    61,
+                    255
+                },
+                alpha
+            );
+
+        Color luz =
+            corComAlpha(
+                COR_CIANO,
+                alpha
+            );
+
+        DrawRectangle(
+            (int)x,
+            349,
+            13,
+            91,
+            pedra
+        );
+
+        DrawRectangle(
+            (int)x - 8,
+            349,
+            29,
+            6,
+            pedra
+        );
+
+        DrawCircle(
+            (int)x + 6,
+            361,
+            3.0f,
+            luz
+        );
+    }
+
+    desenhaChaoDimensao(
+        m,
+        (Color){
+            37,
+            31,
+            43,
+            255
+        },
+        (Color){
+            231,
+            134,
+            74,
+            255
+        },
+        (Color){
+            116,
+            80,
+            89,
+            255
+        },
+        alpha
+    );
+}
+
+/* ============================================================
+ * DIMENSÃO 1: FLORESTA BIOLUMINESCENTE
+ * ============================================================ */
+
+static void desenhaFloresta(
+    const Mundo *m,
+    float alpha
+) {
+    desenhaGradienteVertical(
+        (Color){
+            8,
+            31,
+            48,
+            255
+        },
+        (Color){
+            21,
+            86,
+            78,
+            255
+        },
+        alpha
+    );
+
+    Color lua =
+        corComAlpha(
+            (Color){
+                184,
+                244,
+                232,
+                255
+            },
+            alpha
+        );
+
+    Color halo =
+        lua;
+
+    halo.a =
+        (unsigned char)(
+            48.0f *
+            alpha
+        );
+
+    DrawCircle(
+        770,
+        112,
+        57.0f,
+        halo
+    );
+
+    DrawCircle(
+        770,
+        112,
+        34.0f,
+        lua
+    );
+
+    /*
+     * Árvores distantes.
+     */
+    for (
+        int i = -1;
+        i < 11;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 110.0f,
+                m->distancia,
+                0.045f,
+                1210.0f
+            ) -
+            100.0f;
 
         int altura =
-            35 +
+            105 +
             (i & 1) *
-            24;
+            35;
 
-        Color torre =
-            misturaCor(
-                tema->montanha3,
-                COR_PAINEL,
-                0.35f
+        Color tronco =
+            corComAlpha(
+                (Color){
+                    13,
+                    57,
+                    59,
+                    255
+                },
+                alpha
+            );
+
+        Color copa =
+            corComAlpha(
+                (Color){
+                    17,
+                    76,
+                    71,
+                    255
+                },
+                alpha
             );
 
         DrawRectangle(
             (int)x,
             (int)CHAO_Y -
                 altura,
-            10,
+            15,
             altura,
-            torre
-        );
-
-        DrawRectangle(
-            (int)x - 7,
-            (int)CHAO_Y -
-                altura,
-            24,
-            5,
-            tema->montanha3
+            tronco
         );
 
         DrawCircle(
-            (int)x + 5,
+            (int)x + 7,
             (int)CHAO_Y -
-                altura -
-                6,
-            5.0f,
-            tema->tecnologia
+                altura,
+            39.0f,
+            copa
+        );
+
+        DrawCircle(
+            (int)x - 14,
+            (int)CHAO_Y -
+                altura +
+                22,
+            28.0f,
+            copa
+        );
+
+        DrawCircle(
+            (int)x + 29,
+            (int)CHAO_Y -
+                altura +
+                18,
+            30.0f,
+            copa
         );
     }
-}
 
-static void desenhaChao(
-    const Mundo *m,
-    const TemaCenario *tema
-) {
-    DrawRectangle(
-        0,
-        (int)CHAO_Y,
-        LARGURA_TELA,
-        ALTURA_TELA -
-            (int)CHAO_Y,
-        tema->chao
-    );
-
-    DrawRectangle(
-        0,
-        (int)CHAO_Y,
-        LARGURA_TELA,
-        4,
-        tema->chaoTopo
-    );
-
-    Color faixaInferior =
-        misturaCor(
-            tema->chao,
-            tema->chaoTopo,
-            0.42f
-        );
-
-    DrawRectangle(
-        0,
-        (int)CHAO_Y + 4,
-        LARGURA_TELA,
-        3,
-        faixaInferior
-    );
-
+    /*
+     * Árvores próximas.
+     */
     for (
-        int i = 0;
-        i < 28;
+        int i = -1;
+        i < 7;
         i++
     ) {
         float x =
+            deslocamentoCiclico(
+                i * 180.0f,
+                m->distancia,
+                0.105f,
+                1260.0f
+            ) -
+            100.0f;
+
+        Color tronco =
+            corComAlpha(
+                (Color){
+                    16,
+                    46,
+                    50,
+                    255
+                },
+                alpha
+            );
+
+        DrawRectangleRounded(
+            (Rectangle){
+                x,
+                278.0f,
+                25.0f,
+                162.0f
+            },
+            0.35f,
+            7,
+            tronco
+        );
+
+        DrawLineEx(
+            (Vector2){
+                x + 10.0f,
+                310.0f
+            },
+            (Vector2){
+                x - 34.0f,
+                273.0f
+            },
+            11.0f,
+            tronco
+        );
+
+        DrawLineEx(
+            (Vector2){
+                x + 17.0f,
+                333.0f
+            },
+            (Vector2){
+                x + 55.0f,
+                292.0f
+            },
+            10.0f,
+            tronco
+        );
+    }
+
+    /*
+     * Cogumelos luminosos.
+     */
+    for (
+        int i = 0;
+        i < 10;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 103.0f,
+                m->distancia,
+                0.30f,
+                1030.0f
+            );
+
+        float tamanho =
+            6.0f +
+            (i % 3) *
+            3.0f;
+
+        Color haste =
+            corComAlpha(
+                (Color){
+                    170,
+                    220,
+                    210,
+                    255
+                },
+                alpha
+            );
+
+        Color cogumelo =
+            i % 2 == 0
+                ? corComAlpha(
+                    COR_CIANO,
+                    alpha
+                )
+                : corComAlpha(
+                    COR_ROXO,
+                    alpha
+                );
+
+        Color aura =
+            cogumelo;
+
+        aura.a =
+            (unsigned char)(
+                35.0f *
+                alpha
+            );
+
+        DrawRectangle(
+            (int)x,
+            (int)CHAO_Y -
+                13,
+            3,
+            13,
+            haste
+        );
+
+        DrawCircle(
+            (int)x + 1,
+            (int)CHAO_Y -
+                15,
+            tamanho + 5.0f,
+            aura
+        );
+
+        DrawEllipse(
+            (int)x + 1,
+            (int)CHAO_Y -
+                15,
+            tamanho,
+            tamanho *
+                0.55f,
+            cogumelo
+        );
+    }
+
+    /*
+     * Vaga-lumes.
+     */
+    for (
+        int i = 0;
+        i < 24;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 67.0f +
+                    sinf(
+                        m->tempo *
+                        1.7f +
+                        i
+                    ) *
+                    15.0f,
+                m->distancia,
+                0.03f,
+                1080.0f
+            );
+
+        float y =
+            115.0f +
+            (float)(
+                (i * 47) %
+                270
+            ) +
+            sinf(
+                m->tempo *
+                    2.0f +
+                i
+            ) *
+                8.0f;
+
+        Color luz =
+            corComAlpha(
+                (Color){
+                    139,
+                    255,
+                    175,
+                    210
+                },
+                alpha
+            );
+
+        DrawCircle(
+            (int)x,
+            (int)y,
+            2.2f,
+            luz
+        );
+    }
+
+    desenhaChaoDimensao(
+        m,
+        (Color){
+            15,
+            42,
+            43,
+            255
+        },
+        (Color){
+            58,
+            211,
+            140,
+            255
+        },
+        (Color){
+            46,
+            98,
+            71,
+            255
+        },
+        alpha
+    );
+}
+
+/* ============================================================
+ * DIMENSÃO 2: CIDADE NEON
+ * ============================================================ */
+
+static void desenhaCidadeNeon(
+    const Mundo *m,
+    float alpha
+) {
+    desenhaGradienteVertical(
+        (Color){
+            13,
+            17,
+            43,
+            255
+        },
+        (Color){
+            68,
+            27,
+            89,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Lua tecnológica.
+     */
+    Color lua =
+        corComAlpha(
+            (Color){
+                221,
+                197,
+                255,
+                255
+            },
+            alpha
+        );
+
+    Color halo =
+        corComAlpha(
+            (Color){
+                206,
+                80,
+                255,
+                45
+            },
+            alpha
+        );
+
+    DrawCircle(
+        785,
+        106,
+        62.0f,
+        halo
+    );
+
+    DrawCircle(
+        785,
+        106,
+        34.0f,
+        lua
+    );
+
+    /*
+     * Prédios distantes.
+     */
+    for (
+        int i = -1;
+        i < 13;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 82.0f,
+                m->distancia,
+                0.035f,
+                1066.0f
+            ) -
+            70.0f;
+
+        int largura =
+            43 +
+            (i % 3) *
+            9;
+
+        int altura =
+            90 +
+            (i * 37 & 95);
+
+        Color predio =
+            corComAlpha(
+                (Color){
+                    26,
+                    28,
+                    61,
+                    255
+                },
+                alpha
+            );
+
+        DrawRectangle(
+            (int)x,
+            (int)CHAO_Y -
+                altura,
+            largura,
+            altura,
+            predio
+        );
+
+        for (
+            int linha = 0;
+            linha < 5;
+            linha++
+        ) {
+            for (
+                int coluna = 0;
+                coluna < 3;
+                coluna++
+            ) {
+                if (
+                    (
+                        linha +
+                        coluna +
+                        i
+                    ) %
+                    3 ==
+                    0
+                ) {
+                    continue;
+                }
+
+                Color janela =
+                    (
+                        linha +
+                        i
+                    ) %
+                    2 ==
+                    0
+                        ? COR_CIANO
+                        : COR_ROXO;
+
+                janela =
+                    corComAlpha(
+                        janela,
+                        alpha *
+                            0.75f
+                    );
+
+                DrawRectangle(
+                    (int)x +
+                        7 +
+                        coluna *
+                        12,
+                    (int)CHAO_Y -
+                        altura +
+                        12 +
+                        linha *
+                        15,
+                    6,
+                    8,
+                    janela
+                );
+            }
+        }
+    }
+
+    /*
+     * Prédios próximos e letreiros sem texto.
+     */
+    for (
+        int i = -1;
+        i < 8;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 145.0f,
+                m->distancia,
+                0.095f,
+                1160.0f
+            ) -
+            110.0f;
+
+        int altura =
+            120 +
+            (i & 1) *
+            75;
+
+        Color predio =
+            corComAlpha(
+                (Color){
+                    19,
+                    22,
+                    45,
+                    255
+                },
+                alpha
+            );
+
+        DrawRectangle(
+            (int)x,
+            (int)CHAO_Y -
+                altura,
+            84,
+            altura,
+            predio
+        );
+
+        Color borda =
+            i % 2 == 0
+                ? corComAlpha(
+                    COR_CIANO,
+                    alpha
+                )
+                : corComAlpha(
+                    (Color){
+                        255,
+                        73,
+                        200,
+                        255
+                    },
+                    alpha
+                );
+
+        DrawRectangleLinesEx(
+            (Rectangle){
+                x,
+                CHAO_Y -
+                    altura,
+                84.0f,
+                (float)altura
+            },
+            2.0f,
+            borda
+        );
+
+        DrawRectangle(
+            (int)x + 12,
+            (int)CHAO_Y -
+                altura +
+                23,
+            59,
+            26,
+            corComAlpha(
+                borda,
+                0.28f
+            )
+        );
+
+        DrawRectangleLinesEx(
+            (Rectangle){
+                x + 12.0f,
+                CHAO_Y -
+                    altura +
+                    23.0f,
+                59.0f,
+                26.0f
+            },
+            2.0f,
+            borda
+        );
+    }
+
+    /*
+     * Cabos elevados.
+     */
+    Color cabo =
+        corComAlpha(
+            (Color){
+                73,
+                84,
+                116,
+                255
+            },
+            alpha
+        );
+
+    for (
+        int i = 0;
+        i < 4;
+        i++
+    ) {
+        float y =
+            188.0f +
+            i * 37.0f;
+
+        DrawLineEx(
+            (Vector2){
+                0.0f,
+                y
+            },
+            (Vector2){
+                (float)LARGURA_TELA,
+                y +
+                    sinf(
+                        m->tempo +
+                        i
+                    ) *
+                    5.0f
+            },
+            2.0f,
+            cabo
+        );
+    }
+
+    desenhaChaoDimensao(
+        m,
+        (Color){
+            20,
+            23,
+            38,
+            255
+        },
+        (Color){
+            69,
+            220,
+            224,
+            255
+        },
+        (Color){
+            180,
+            100,
+            230,
+            255
+        },
+        alpha
+    );
+}
+
+/* ============================================================
+ * DIMENSÃO 3: MUNDO GLACIAL
+ * ============================================================ */
+
+static void desenhaGelo(
+    const Mundo *m,
+    float alpha
+) {
+    desenhaGradienteVertical(
+        (Color){
+            18,
+            48,
+            93,
+            255
+        },
+        (Color){
+            91,
+            174,
+            197,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Aurora boreal.
+     */
+    for (
+        int i = 0;
+        i < 5;
+        i++
+    ) {
+        Color aurora =
+            i % 2 == 0
+                ? (Color){
+                    104,
+                    255,
+                    206,
+                    38
+                }
+                : (Color){
+                    145,
+                    125,
+                    255,
+                    34
+                };
+
+        aurora =
+            corComAlpha(
+                aurora,
+                alpha
+            );
+
+        float y =
+            38.0f +
+            i * 23.0f;
+
+        for (
+            int x = -30;
+            x < LARGURA_TELA;
+            x += 18
+        ) {
+            float ondulacao =
+                sinf(
+                    x * 0.016f +
+                    m->tempo *
+                        0.55f +
+                    i
+                ) *
+                17.0f;
+
+            DrawLineEx(
+                (Vector2){
+                    (float)x,
+                    y +
+                        ondulacao
+                },
+                (Vector2){
+                    (float)x +
+                        20.0f,
+                    y +
+                        ondulacao +
+                        7.0f
+                },
+                9.0f,
+                aurora
+            );
+        }
+    }
+
+    /*
+     * Montanhas de gelo.
+     */
+    desenhaMontanhaDimensional(
+        m,
+        0.023f,
+        388,
+        175,
+        270,
+        (Color){
+            133,
+            195,
+            218,
+            255
+        },
+        alpha
+    );
+
+    desenhaMontanhaDimensional(
+        m,
+        0.052f,
+        420,
+        126,
+        210,
+        (Color){
+            80,
+            145,
+            180,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Neve nos picos.
+     */
+    Color neve =
+        corComAlpha(
+            (Color){
+                228,
+                248,
+                255,
+                220
+            },
+            alpha
+        );
+
+    float deslocamento =
+        fmodf(
+            m->distancia *
+                0.023f,
+            270.0f
+        );
+
+    for (
+        int i = -2;
+        i < 6;
+        i++
+    ) {
+        float x =
+            i * 270.0f -
+            deslocamento;
+
+        DrawTriangle(
+            (Vector2){
+                x + 106.0f,
+                258.0f
+            },
+            (Vector2){
+                x + 135.0f,
+                213.0f
+            },
+            (Vector2){
+                x + 165.0f,
+                258.0f
+            },
+            neve
+        );
+    }
+
+    /*
+     * Cristais próximos.
+     */
+    for (
+        int i = 0;
+        i < 9;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 128.0f,
+                m->distancia,
+                0.23f,
+                1152.0f
+            );
+
+        float altura =
+            31.0f +
+            (i % 4) *
+            13.0f;
+
+        Color cristal =
+            i % 2 == 0
+                ? corComAlpha(
+                    COR_CIANO,
+                    alpha
+                )
+                : corComAlpha(
+                    (Color){
+                        150,
+                        205,
+                        255,
+                        255
+                    },
+                    alpha
+                );
+
+        DrawTriangle(
+            (Vector2){
+                x - 10.0f,
+                CHAO_Y
+            },
+            (Vector2){
+                x,
+                CHAO_Y -
+                    altura
+            },
+            (Vector2){
+                x + 10.0f,
+                CHAO_Y
+            },
+            cristal
+        );
+    }
+
+    /*
+     * Flocos de neve.
+     */
+    for (
+        int i = 0;
+        i < 56;
+        i++
+    ) {
+        float cicloY =
+            CHAO_Y +
+            30.0f;
+
+        float y =
             fmodf(
-                i * 52.0f -
-                    m->distancia,
+                i * 43.0f +
+                    m->tempo *
+                    (
+                        31.0f +
+                        i % 5
+                    ),
+                cicloY
+            );
+
+        float x =
+            fmodf(
+                i * 89.0f -
+                    m->distancia *
+                    0.01f +
+                    sinf(
+                        m->tempo +
+                        i
+                    ) *
+                    13.0f,
                 (float)LARGURA_TELA
             );
 
@@ -1107,31 +2109,334 @@ static void desenhaChao(
                 LARGURA_TELA;
         }
 
-        int y =
-            (int)CHAO_Y +
-            14 +
-            (i % 4) *
-            9;
-
-        int largura =
-            11 +
-            (i % 3) *
-            8;
-
-        DrawRectangle(
+        DrawCircle(
             (int)x,
-            y,
-            largura,
-            2,
-            tema->chaoLuz
+            (int)y,
+            i % 4 == 0
+                ? 2.0f
+                : 1.2f,
+            corComAlpha(
+                (Color){
+                    239,
+                    251,
+                    255,
+                    210
+                },
+                alpha
+            )
         );
     }
 
-    Color linhaFundo =
-        misturaCor(
-            tema->chao,
-            tema->chaoLuz,
-            0.45f
+    desenhaChaoDimensao(
+        m,
+        (Color){
+            47,
+            92,
+            120,
+            255
+        },
+        (Color){
+            208,
+            247,
+            255,
+            255
+        },
+        (Color){
+            115,
+            193,
+            214,
+            255
+        },
+        alpha
+    );
+}
+
+/* ============================================================
+ * DIMENSÃO 4: VULCÂNICA
+ * ============================================================ */
+
+static void desenhaVulcao(
+    const Mundo *m,
+    float alpha
+) {
+    desenhaGradienteVertical(
+        (Color){
+            30,
+            9,
+            17,
+            255
+        },
+        (Color){
+            135,
+            38,
+            27,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Sol vermelho.
+     */
+    DrawCircle(
+        770,
+        111,
+        62.0f,
+        corComAlpha(
+            (Color){
+                255,
+                66,
+                37,
+                43
+            },
+            alpha
+        )
+    );
+
+    DrawCircle(
+        770,
+        111,
+        37.0f,
+        corComAlpha(
+            (Color){
+                255,
+                112,
+                52,
+                255
+            },
+            alpha
+        )
+    );
+
+    /*
+     * Vulcões.
+     */
+    float deslocamento =
+        fmodf(
+            m->distancia *
+                0.034f,
+            330.0f
+        );
+
+    for (
+        int i = -1;
+        i < 5;
+        i++
+    ) {
+        float x =
+            i * 330.0f -
+            deslocamento;
+
+        Color rocha =
+            corComAlpha(
+                (Color){
+                    54,
+                    24,
+                    27,
+                    255
+                },
+                alpha
+            );
+
+        Color lava =
+            corComAlpha(
+                (Color){
+                    255,
+                    79,
+                    28,
+                    255
+                },
+                alpha
+            );
+
+        DrawTriangle(
+            (Vector2){
+                x,
+                420.0f
+            },
+            (Vector2){
+                x + 165.0f,
+                212.0f
+            },
+            (Vector2){
+                x + 330.0f,
+                420.0f
+            },
+            rocha
+        );
+
+        DrawTriangle(
+            (Vector2){
+                x + 144.0f,
+                244.0f
+            },
+            (Vector2){
+                x + 165.0f,
+                212.0f
+            },
+            (Vector2){
+                x + 186.0f,
+                244.0f
+            },
+            lava
+        );
+
+        DrawLineEx(
+            (Vector2){
+                x + 165.0f,
+                235.0f
+            },
+            (Vector2){
+                x + 125.0f,
+                398.0f
+            },
+            8.0f,
+            lava
+        );
+
+        DrawLineEx(
+            (Vector2){
+                x + 171.0f,
+                239.0f
+            },
+            (Vector2){
+                x + 218.0f,
+                399.0f
+            },
+            5.0f,
+            lava
+        );
+    }
+
+    /*
+     * Fumaça.
+     */
+    for (
+        int i = 0;
+        i < 10;
+        i++
+    ) {
+        float x =
+            165.0f +
+            (i % 3) *
+            330.0f -
+            deslocamento;
+
+        float y =
+            190.0f -
+            fmodf(
+                m->tempo *
+                    18.0f +
+                i * 23.0f,
+                130.0f
+            );
+
+        Color fumaca =
+            corComAlpha(
+                (Color){
+                    42,
+                    30,
+                    34,
+                    125
+                },
+                alpha
+            );
+
+        DrawCircle(
+            (int)x +
+                (i % 2) *
+                13,
+            (int)y,
+            15.0f +
+                (i % 3) *
+                4.0f,
+            fumaca
+        );
+    }
+
+    /*
+     * Brasas.
+     */
+    for (
+        int i = 0;
+        i < 42;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 71.0f +
+                    sinf(
+                        m->tempo +
+                        i
+                    ) *
+                    14.0f,
+                m->distancia,
+                0.015f,
+                1040.0f
+            );
+
+        float y =
+            CHAO_Y -
+            fmodf(
+                i * 37.0f +
+                    m->tempo *
+                    (
+                        27.0f +
+                        i % 7
+                    ),
+                330.0f
+            );
+
+        DrawCircle(
+            (int)x,
+            (int)y,
+            i % 4 == 0
+                ? 2.4f
+                : 1.5f,
+            corComAlpha(
+                i % 2 == 0
+                    ? COR_LARANJA
+                    : COR_AMARELO,
+                alpha
+            )
+        );
+    }
+
+    desenhaChaoDimensao(
+        m,
+        (Color){
+            38,
+            27,
+            29,
+            255
+        },
+        (Color){
+            255,
+            79,
+            28,
+            255
+        },
+        (Color){
+            132,
+            50,
+            35,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Rachaduras de lava.
+     */
+    Color rachadura =
+        corComAlpha(
+            (Color){
+                255,
+                100,
+                29,
+                255
+            },
+            alpha
         );
 
     for (
@@ -1140,112 +2445,1814 @@ static void desenhaChao(
         i++
     ) {
         float x =
-            fmodf(
-                i * 95.0f -
-                    m->distancia *
-                    1.25f,
-                (float)LARGURA_TELA
+            deslocamentoCiclico(
+                i * 93.0f,
+                m->distancia,
+                1.1f,
+                1116.0f
             );
-
-        if (x < 0.0f) {
-            x +=
-                LARGURA_TELA;
-        }
 
         DrawLineEx(
             (Vector2){
                 x,
-                CHAO_Y +
-                    64.0f
+                CHAO_Y + 17.0f
             },
             (Vector2){
-                x + 28.0f,
-                CHAO_Y +
-                    64.0f
+                x + 12.0f,
+                CHAO_Y + 29.0f
             },
             2.0f,
-            linhaFundo
+            rachadura
         );
+
+        DrawLineEx(
+            (Vector2){
+                x + 12.0f,
+                CHAO_Y + 29.0f
+            },
+            (Vector2){
+                x + 5.0f,
+                CHAO_Y + 42.0f
+            },
+            2.0f,
+            rachadura
+        );
+    }
+}
+
+/* ============================================================
+ * DIMENSÃO 5: CIDADE SUBMERSA
+ * ============================================================ */
+
+static void desenhaSubmerso(
+    const Mundo *m,
+    float alpha
+) {
+    desenhaGradienteVertical(
+        (Color){
+            5,
+            40,
+            70,
+            255
+        },
+        (Color){
+            16,
+            108,
+            115,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Raios de luz.
+     */
+    for (
+        int i = 0;
+        i < 5;
+        i++
+    ) {
+        Color raio =
+            corComAlpha(
+                (Color){
+                    177,
+                    255,
+                    235,
+                    22
+                },
+                alpha
+            );
+
+        DrawTriangle(
+            (Vector2){
+                90.0f +
+                    i * 220.0f,
+                0.0f
+            },
+            (Vector2){
+                180.0f +
+                    i * 220.0f,
+                0.0f
+            },
+            (Vector2){
+                260.0f +
+                    i * 220.0f,
+                CHAO_Y
+            },
+            raio
+        );
+    }
+
+    /*
+     * Ruínas submersas.
+     */
+    for (
+        int i = -1;
+        i < 7;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 185.0f,
+                m->distancia,
+                0.075f,
+                1295.0f
+            ) -
+            110.0f;
+
+        int altura =
+            76 +
+            (i & 1) *
+            51;
+
+        Color pedra =
+            corComAlpha(
+                (Color){
+                    31,
+                    78,
+                    86,
+                    255
+                },
+                alpha
+            );
+
+        DrawRectangle(
+            (int)x,
+            (int)CHAO_Y -
+                altura,
+            21,
+            altura,
+            pedra
+        );
+
+        DrawRectangle(
+            (int)x - 9,
+            (int)CHAO_Y -
+                altura,
+            39,
+            8,
+            pedra
+        );
+
+        DrawRectangle(
+            (int)x - 6,
+            (int)CHAO_Y - 10,
+            33,
+            10,
+            pedra
+        );
+
+        if (i % 2 == 0) {
+            DrawLineEx(
+                (Vector2){
+                    x + 4.0f,
+                    CHAO_Y -
+                        altura +
+                        11.0f
+                },
+                (Vector2){
+                    x + 12.0f,
+                    CHAO_Y -
+                        altura +
+                        31.0f
+                },
+                2.0f,
+                corComAlpha(
+                    (Color){
+                        75,
+                        151,
+                        145,
+                        255
+                    },
+                    alpha
+                )
+            );
+        }
+    }
+
+    /*
+     * Algas.
+     */
+    for (
+        int i = 0;
+        i < 20;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 61.0f,
+                m->distancia,
+                0.20f,
+                1220.0f
+            );
+
+        float altura =
+            23.0f +
+            (i % 5) *
+            8.0f;
+
+        Color alga =
+            corComAlpha(
+                i % 2 == 0
+                    ? (Color){
+                        45,
+                        163,
+                        118,
+                        255
+                    }
+                    : (Color){
+                        37,
+                        126,
+                        119,
+                        255
+                    },
+                alpha
+            );
+
+        Vector2 anterior = {
+            x,
+            CHAO_Y
+        };
+
+        for (
+            int parte = 1;
+            parte <= 4;
+            parte++
+        ) {
+            float progresso =
+                (float)parte /
+                4.0f;
+
+            Vector2 atual = {
+                x +
+                    sinf(
+                        m->tempo *
+                            1.7f +
+                        i +
+                        parte
+                    ) *
+                    5.0f *
+                    progresso,
+                CHAO_Y -
+                    altura *
+                    progresso
+            };
+
+            DrawLineEx(
+                anterior,
+                atual,
+                4.0f,
+                alga
+            );
+
+            anterior =
+                atual;
+        }
+    }
+
+    /*
+     * Peixes distantes.
+     */
+    for (
+        int i = 0;
+        i < 9;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 151.0f,
+                m->distancia,
+                0.035f,
+                1360.0f
+            );
+
+        float y =
+            112.0f +
+            (i * 59) %
+                240;
+
+        Color peixe =
+            corComAlpha(
+                (Color){
+                    105,
+                    185,
+                    180,
+                    120
+                },
+                alpha
+            );
+
+        DrawEllipse(
+            (int)x,
+            (int)y,
+            12.0f,
+            5.0f,
+            peixe
+        );
+
+        DrawTriangle(
+            (Vector2){
+                x + 10.0f,
+                y
+            },
+            (Vector2){
+                x + 19.0f,
+                y - 7.0f
+            },
+            (Vector2){
+                x + 19.0f,
+                y + 7.0f
+            },
+            peixe
+        );
+    }
+
+    /*
+     * Bolhas.
+     */
+    for (
+        int i = 0;
+        i < 44;
+        i++
+    ) {
+        float x =
+            (float)(
+                (i * 83 + 29) %
+                LARGURA_TELA
+            ) +
+            sinf(
+                m->tempo +
+                i
+            ) *
+                5.0f;
+
+        float y =
+            CHAO_Y -
+            fmodf(
+                i * 47.0f +
+                    m->tempo *
+                    (
+                        22.0f +
+                        i % 7
+                    ),
+                CHAO_Y +
+                    20.0f
+            );
+
+        float raio =
+            1.5f +
+            (i % 4) *
+            0.8f;
+
+        DrawCircleLines(
+            (int)x,
+            (int)y,
+            raio,
+            corComAlpha(
+                (Color){
+                    195,
+                    246,
+                    242,
+                    155
+                },
+                alpha
+            )
+        );
+    }
+
+    desenhaChaoDimensao(
+        m,
+        (Color){
+            31,
+            72,
+            72,
+            255
+        },
+        (Color){
+            101,
+            204,
+            179,
+            255
+        },
+        (Color){
+            71,
+            118,
+            99,
+            255
+        },
+        alpha
+    );
+}
+
+/* ============================================================
+ * DIMENSÃO 6: VAZIO CÓSMICO
+ * ============================================================ */
+
+static void desenhaEspaco(
+    const Mundo *m,
+    float alpha
+) {
+    desenhaGradienteVertical(
+        (Color){
+            4,
+            6,
+            24,
+            255
+        },
+        (Color){
+            27,
+            18,
+            67,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Nebulosas.
+     */
+    for (
+        int i = 0;
+        i < 5;
+        i++
+    ) {
+        float x =
+            110.0f +
+            i * 225.0f -
+            fmodf(
+                m->distancia *
+                    0.008f,
+                180.0f
+            );
+
+        float y =
+            90.0f +
+            (i % 3) *
+            82.0f;
+
+        Color nebulosa =
+            i % 2 == 0
+                ? (Color){
+                    145,
+                    65,
+                    220,
+                    28
+                }
+                : (Color){
+                    53,
+                    165,
+                    225,
+                    25
+                };
+
+        nebulosa =
+            corComAlpha(
+                nebulosa,
+                alpha
+            );
+
+        DrawCircle(
+            (int)x,
+            (int)y,
+            75.0f,
+            nebulosa
+        );
+
+        DrawCircle(
+            (int)x + 45,
+            (int)y + 15,
+            54.0f,
+            nebulosa
+        );
+    }
+
+    /*
+     * Estrelas com paralaxe.
+     */
+    for (
+        int camada = 0;
+        camada < 3;
+        camada++
+    ) {
+        for (
+            int i = 0;
+            i < 34;
+            i++
+        ) {
+            float velocidade =
+                0.008f +
+                camada *
+                0.012f;
+
+            float x =
+                deslocamentoCiclico(
+                    i * 89.0f +
+                        camada *
+                        37.0f,
+                    m->distancia,
+                    velocidade,
+                    1100.0f
+                );
+
+            float y =
+                25.0f +
+                (float)(
+                    (
+                        i * 53 +
+                        camada * 29
+                    ) %
+                    390
+                );
+
+            float raio =
+                0.8f +
+                camada *
+                0.65f;
+
+            DrawCircle(
+                (int)x,
+                (int)y,
+                raio,
+                corComAlpha(
+                    camada == 2
+                        ? COR_CIANO
+                        : WHITE,
+                    alpha *
+                        (
+                            0.65f +
+                            camada *
+                            0.12f
+                        )
+                )
+            );
+        }
+    }
+
+    /*
+     * Planetas.
+     */
+    DrawCircle(
+        770,
+        112,
+        54.0f,
+        corComAlpha(
+            (Color){
+                76,
+                83,
+                190,
+                255
+            },
+            alpha
+        )
+    );
+
+    DrawCircle(
+        753,
+        97,
+        22.0f,
+        corComAlpha(
+            (Color){
+                106,
+                158,
+                225,
+                120
+            },
+            alpha
+        )
+    );
+
+    DrawEllipseLines(
+        770,
+        112,
+        82.0f,
+        19.0f,
+        corComAlpha(
+            (Color){
+                219,
+                175,
+                255,
+                190
+            },
+            alpha
+        )
+    );
+
+    /*
+     * Ilhas rochosas flutuantes.
+     */
+    for (
+        int i = -1;
+        i < 7;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 178.0f,
+                m->distancia,
+                0.08f,
+                1246.0f
+            ) -
+            120.0f;
+
+        float y =
+            328.0f +
+            (i % 3) *
+            29.0f;
+
+        Color rocha =
+            corComAlpha(
+                (Color){
+                    49,
+                    45,
+                    82,
+                    255
+                },
+                alpha
+            );
+
+        DrawEllipse(
+            (int)x,
+            (int)y,
+            77.0f,
+            21.0f,
+            rocha
+        );
+
+        DrawTriangle(
+            (Vector2){
+                x - 54.0f,
+                y + 5.0f
+            },
+            (Vector2){
+                x,
+                y + 76.0f
+            },
+            (Vector2){
+                x + 53.0f,
+                y + 5.0f
+            },
+            rocha
+        );
+
+        DrawCircle(
+            (int)x,
+            (int)y - 4,
+            5.0f,
+            corComAlpha(
+                COR_ROXO,
+                alpha
+            )
+        );
+    }
+
+    /*
+     * Meteoros.
+     */
+    for (
+        int i = 0;
+        i < 5;
+        i++
+    ) {
+        float ciclo =
+            LARGURA_TELA +
+            300.0f;
+
+        float x =
+            fmodf(
+                i * 271.0f +
+                    m->tempo *
+                    63.0f,
+                ciclo
+            ) -
+            100.0f;
+
+        float y =
+            63.0f +
+            i * 58.0f +
+            x * 0.08f;
+
+        Color rastro =
+            corComAlpha(
+                (Color){
+                    144,
+                    185,
+                    255,
+                    110
+                },
+                alpha
+            );
+
+        DrawLineEx(
+            (Vector2){
+                x - 38.0f,
+                y - 17.0f
+            },
+            (Vector2){
+                x,
+                y
+            },
+            3.0f,
+            rastro
+        );
+
+        DrawCircle(
+            (int)x,
+            (int)y,
+            3.0f,
+            corComAlpha(
+                WHITE,
+                alpha
+            )
+        );
+    }
+
+    desenhaChaoDimensao(
+        m,
+        (Color){
+            25,
+            24,
+            47,
+            255
+        },
+        (Color){
+            139,
+            98,
+            235,
+            255
+        },
+        (Color){
+            71,
+            89,
+            139,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Cristais espaciais no chão.
+     */
+    for (
+        int i = 0;
+        i < 11;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 97.0f,
+                m->distancia,
+                1.0f,
+                1067.0f
+            );
+
+        Color cristal =
+            corComAlpha(
+                i % 2 == 0
+                    ? COR_ROXO
+                    : COR_CIANO,
+                alpha
+            );
+
+        DrawTriangle(
+            (Vector2){
+                x - 5.0f,
+                CHAO_Y + 4.0f
+            },
+            (Vector2){
+                x,
+                CHAO_Y - 14.0f
+            },
+            (Vector2){
+                x + 5.0f,
+                CHAO_Y + 4.0f
+            },
+            cristal
+        );
+    }
+}
+
+/* ============================================================
+ * DIMENSÃO 7: INFERNO LÓGICO
+ * ============================================================ */
+
+static void desenhaInferno(
+    const Mundo *m,
+    float alpha
+) {
+    desenhaGradienteVertical(
+        (Color){
+            15,
+            2,
+            11,
+            255
+        },
+        (Color){
+            96,
+            14,
+            21,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Lua eclipsada.
+     */
+    DrawCircle(
+        780,
+        106,
+        56.0f,
+        corComAlpha(
+            (Color){
+                255,
+                45,
+                25,
+                44
+            },
+            alpha
+        )
+    );
+
+    DrawCircle(
+        780,
+        106,
+        36.0f,
+        corComAlpha(
+            (Color){
+                202,
+                34,
+                31,
+                255
+            },
+            alpha
+        )
+    );
+
+    DrawCircle(
+        770,
+        99,
+        30.0f,
+        corComAlpha(
+            (Color){
+                25,
+                7,
+                18,
+                255
+            },
+            alpha
+        )
+    );
+
+    /*
+     * Castelo distante.
+     */
+    Color castelo =
+        corComAlpha(
+            (Color){
+                30,
+                13,
+                25,
+                255
+            },
+            alpha
+        );
+
+    float casteloX =
+        670.0f -
+        fmodf(
+            m->distancia *
+                0.015f,
+            90.0f
+        );
+
+    DrawRectangle(
+        (int)casteloX,
+        235,
+        192,
+        205,
+        castelo
+    );
+
+    for (
+        int i = 0;
+        i < 4;
+        i++
+    ) {
+        float x =
+            casteloX +
+            i * 55.0f;
+
+        DrawRectangle(
+            (int)x,
+            183 +
+                (i % 2) *
+                31,
+            32,
+            257 -
+                (i % 2) *
+                31,
+            castelo
+        );
+
+        DrawTriangle(
+            (Vector2){
+                x - 5.0f,
+                184.0f +
+                    (i % 2) *
+                    31.0f
+            },
+            (Vector2){
+                x + 16.0f,
+                142.0f +
+                    (i % 2) *
+                    31.0f
+            },
+            (Vector2){
+                x + 37.0f,
+                184.0f +
+                    (i % 2) *
+                    31.0f
+            },
+            castelo
+        );
+
+        DrawRectangle(
+            (int)x + 12,
+            250 +
+                (i % 2) *
+                19,
+            7,
+            18,
+            corComAlpha(
+                COR_VERMELHO,
+                alpha *
+                    0.75f
+            )
+        );
+    }
+
+    /*
+     * Pilares e correntes.
+     */
+    for (
+        int i = -1;
+        i < 7;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 190.0f,
+                m->distancia,
+                0.11f,
+                1330.0f
+            ) -
+            100.0f;
+
+        Color pedra =
+            corComAlpha(
+                (Color){
+                    45,
+                    25,
+                    35,
+                    255
+                },
+                alpha
+            );
+
+        DrawRectangle(
+            (int)x,
+            267,
+            24,
+            173,
+            pedra
+        );
+
+        DrawRectangle(
+            (int)x - 9,
+            267,
+            42,
+            9,
+            pedra
+        );
+
+        Color corrente =
+            corComAlpha(
+                (Color){
+                    102,
+                    74,
+                    79,
+                    255
+                },
+                alpha
+            );
+
+        for (
+            int elo = 0;
+            elo < 5;
+            elo++
+        ) {
+            float correnteX =
+                x +
+                12.0f +
+                sinf(
+                    m->tempo +
+                    elo
+                ) *
+                    3.0f;
+
+            DrawCircleLines(
+                (int)correnteX,
+                289 +
+                    elo *
+                    17,
+                6.0f,
+                corrente
+            );
+        }
+    }
+
+    /*
+     * Símbolos lógicos flutuantes.
+     */
+    static const char *simbolos[] = {
+        "~",
+        "&",
+        "|",
+        "->",
+        "<->"
+    };
+
+    for (
+        int i = 0;
+        i < 13;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 97.0f,
+                m->distancia,
+                0.018f,
+                1261.0f
+            );
+
+        float y =
+            72.0f +
+            (i * 71) %
+                290 +
+            sinf(
+                m->tempo *
+                    1.3f +
+                i
+            ) *
+                10.0f;
+
+        Color simbolo =
+            corComAlpha(
+                i % 2 == 0
+                    ? COR_VERMELHO
+                    : COR_LARANJA,
+                alpha *
+                    0.67f
+            );
+
+        DrawText(
+            simbolos[
+                i %
+                5
+            ],
+            (int)x,
+            (int)y,
+            19,
+            simbolo
+        );
+    }
+
+    /*
+     * Brasas.
+     */
+    for (
+        int i = 0;
+        i < 54;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 61.0f +
+                    sinf(
+                        m->tempo *
+                            0.8f +
+                        i
+                    ) *
+                    13.0f,
+                m->distancia,
+                0.01f,
+                1120.0f
+            );
+
+        float y =
+            CHAO_Y -
+            fmodf(
+                i * 31.0f +
+                    m->tempo *
+                    (
+                        32.0f +
+                        i % 8
+                    ),
+                390.0f
+            );
+
+        DrawCircle(
+            (int)x,
+            (int)y,
+            i % 4 == 0
+                ? 2.8f
+                : 1.4f,
+            corComAlpha(
+                i % 3 == 0
+                    ? COR_AMARELO
+                    : COR_LARANJA,
+                alpha
+            )
+        );
+    }
+
+    desenhaChaoDimensao(
+        m,
+        (Color){
+            35,
+            22,
+            27,
+            255
+        },
+        (Color){
+            255,
+            58,
+            35,
+            255
+        },
+        (Color){
+            120,
+            42,
+            39,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Chamas no fundo do chão.
+     */
+    for (
+        int i = 0;
+        i < 18;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 59.0f,
+                m->distancia,
+                0.42f,
+                1062.0f
+            );
+
+        float altura =
+            17.0f +
+            fabsf(
+                sinf(
+                    m->tempo *
+                        5.0f +
+                    i
+                )
+            ) *
+                24.0f;
+
+        DrawTriangle(
+            (Vector2){
+                x - 8.0f,
+                CHAO_Y
+            },
+            (Vector2){
+                x,
+                CHAO_Y -
+                    altura
+            },
+            (Vector2){
+                x + 8.0f,
+                CHAO_Y
+            },
+            corComAlpha(
+                COR_LARANJA,
+                alpha *
+                    0.78f
+            )
+        );
+
+        DrawTriangle(
+            (Vector2){
+                x - 4.0f,
+                CHAO_Y
+            },
+            (Vector2){
+                x,
+                CHAO_Y -
+                    altura *
+                    0.62f
+            },
+            (Vector2){
+                x + 4.0f,
+                CHAO_Y
+            },
+            corComAlpha(
+                COR_AMARELO,
+                alpha *
+                    0.88f
+            )
+        );
+    }
+}
+
+/* ============================================================
+ * DIMENSÃO 8: REINO CELESTIAL
+ * ============================================================ */
+
+static void desenhaCeuFinal(
+    const Mundo *m,
+    float alpha
+) {
+    desenhaGradienteVertical(
+        (Color){
+            65,
+            135,
+            207,
+            255
+        },
+        (Color){
+            178,
+            232,
+            225,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Sol dourado.
+     */
+    DrawCircle(
+        785,
+        94,
+        82.0f,
+        corComAlpha(
+            (Color){
+                255,
+                237,
+                137,
+                62
+            },
+            alpha
+        )
+    );
+
+    DrawCircle(
+        785,
+        94,
+        45.0f,
+        corComAlpha(
+            (Color){
+                255,
+                244,
+                174,
+                255
+            },
+            alpha
+        )
+    );
+
+    /*
+     * Raios celestiais.
+     */
+    for (
+        int i = 0;
+        i < 7;
+        i++
+    ) {
+        DrawTriangle(
+            (Vector2){
+                700.0f +
+                    i * 22.0f,
+                100.0f
+            },
+            (Vector2){
+                730.0f +
+                    i * 45.0f,
+                CHAO_Y
+            },
+            (Vector2){
+                770.0f +
+                    i * 45.0f,
+                CHAO_Y
+            },
+            corComAlpha(
+                (Color){
+                    255,
+                    244,
+                    180,
+                    19
+                },
+                alpha
+            )
+        );
+    }
+
+    /*
+     * Nuvens distantes.
+     */
+    for (
+        int i = -1;
+        i < 8;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 180.0f,
+                m->distancia,
+                0.025f,
+                1440.0f
+            ) -
+            100.0f;
+
+        float y =
+            155.0f +
+            (i % 3) *
+            42.0f;
+
+        Color sombra =
+            corComAlpha(
+                (Color){
+                    122,
+                    181,
+                    200,
+                    110
+                },
+                alpha
+            );
+
+        Color nuvem =
+            corComAlpha(
+                (Color){
+                    241,
+                    251,
+                    247,
+                    210
+                },
+                alpha
+            );
+
+        DrawEllipse(
+            (int)x + 31,
+            (int)y + 12,
+            51.0f,
+            13.0f,
+            sombra
+        );
+
+        DrawCircle(
+            (int)x,
+            (int)y,
+            19.0f,
+            nuvem
+        );
+
+        DrawCircle(
+            (int)x + 26,
+            (int)y - 10,
+            28.0f,
+            nuvem
+        );
+
+        DrawCircle(
+            (int)x + 59,
+            (int)y,
+            23.0f,
+            nuvem
+        );
+
+        DrawRectangle(
+            (int)x,
+            (int)y,
+            60,
+            22,
+            nuvem
+        );
+    }
+
+    /*
+     * Ilhas flutuantes.
+     */
+    for (
+        int i = -1;
+        i < 7;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 205.0f,
+                m->distancia,
+                0.072f,
+                1435.0f
+            ) -
+            120.0f;
+
+        float y =
+            321.0f +
+            (i % 3) *
+            26.0f;
+
+        Color grama =
+            corComAlpha(
+                (Color){
+                    122,
+                    205,
+                    151,
+                    255
+                },
+                alpha
+            );
+
+        Color pedra =
+            corComAlpha(
+                (Color){
+                    106,
+                    136,
+                    147,
+                    255
+                },
+                alpha
+            );
+
+        DrawEllipse(
+            (int)x,
+            (int)y,
+            84.0f,
+            21.0f,
+            grama
+        );
+
+        DrawTriangle(
+            (Vector2){
+                x - 65.0f,
+                y + 7.0f
+            },
+            (Vector2){
+                x,
+                y + 86.0f
+            },
+            (Vector2){
+                x + 65.0f,
+                y + 7.0f
+            },
+            pedra
+        );
+
+        /*
+         * Templo sobre algumas ilhas.
+         */
+        if (i % 2 == 0) {
+            Color templo =
+                corComAlpha(
+                    (Color){
+                        237,
+                        235,
+                        215,
+                        255
+                    },
+                    alpha
+                );
+
+            DrawRectangle(
+                (int)x - 38,
+                (int)y - 54,
+                76,
+                9,
+                templo
+            );
+
+            for (
+                int coluna = 0;
+                coluna < 4;
+                coluna++
+            ) {
+                DrawRectangle(
+                    (int)x -
+                        31 +
+                        coluna *
+                        20,
+                    (int)y - 45,
+                    7,
+                    45,
+                    templo
+                );
+            }
+
+            DrawTriangle(
+                (Vector2){
+                    x - 46.0f,
+                    y - 54.0f
+                },
+                (Vector2){
+                    x,
+                    y - 85.0f
+                },
+                (Vector2){
+                    x + 46.0f,
+                    y - 54.0f
+                },
+                templo
+            );
+        }
+    }
+
+    /*
+     * Partículas douradas.
+     */
+    for (
+        int i = 0;
+        i < 45;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 79.0f +
+                    sinf(
+                        m->tempo +
+                        i
+                    ) *
+                    11.0f,
+                m->distancia,
+                0.012f,
+                1100.0f
+            );
+
+        float y =
+            35.0f +
+            (i * 61) %
+                380 +
+            sinf(
+                m->tempo *
+                    1.4f +
+                i
+            ) *
+                8.0f;
+
+        DrawCircle(
+            (int)x,
+            (int)y,
+            i % 4 == 0
+                ? 2.5f
+                : 1.4f,
+            corComAlpha(
+                (Color){
+                    255,
+                    230,
+                    118,
+                    210
+                },
+                alpha
+            )
+        );
+    }
+
+    desenhaChaoDimensao(
+        m,
+        (Color){
+            48,
+            74,
+            80,
+            255
+        },
+        (Color){
+            255,
+            221,
+            105,
+            255
+        },
+        (Color){
+            105,
+            157,
+            145,
+            255
+        },
+        alpha
+    );
+
+    /*
+     * Faixa de nuvens abaixo do chão.
+     */
+    Color nuvemBase =
+        corComAlpha(
+            (Color){
+                230,
+                246,
+                240,
+                170
+            },
+            alpha
+        );
+
+    for (
+        int i = -1;
+        i < 12;
+        i++
+    ) {
+        float x =
+            deslocamentoCiclico(
+                i * 95.0f,
+                m->distancia,
+                0.26f,
+                1235.0f
+            ) -
+            70.0f;
+
+        DrawCircle(
+            (int)x,
+            (int)CHAO_Y + 48,
+            41.0f,
+            nuvemBase
+        );
+    }
+}
+
+/* ============================================================
+ * SELEÇÃO E TRANSIÇÃO ENTRE DIMENSÕES
+ * ============================================================ */
+
+static void desenhaDimensao(
+    const Mundo *m,
+    int dimensao,
+    float alpha
+) {
+    switch (dimensao) {
+        case 0:
+            desenhaDeserto(
+                m,
+                alpha
+            );
+            break;
+
+        case 1:
+            desenhaFloresta(
+                m,
+                alpha
+            );
+            break;
+
+        case 2:
+            desenhaCidadeNeon(
+                m,
+                alpha
+            );
+            break;
+
+        case 3:
+            desenhaGelo(
+                m,
+                alpha
+            );
+            break;
+
+        case 4:
+            desenhaVulcao(
+                m,
+                alpha
+            );
+            break;
+
+        case 5:
+            desenhaSubmerso(
+                m,
+                alpha
+            );
+            break;
+
+        case 6:
+            desenhaEspaco(
+                m,
+                alpha
+            );
+            break;
+
+        case 7:
+            desenhaInferno(
+                m,
+                alpha
+            );
+            break;
+
+        default:
+            desenhaCeuFinal(
+                m,
+                alpha
+            );
+            break;
     }
 }
 
 static void desenhaCenario(
     const Mundo *m
 ) {
-    TemaCenario tema =
-        temaAtual(m);
-
-    int progresso =
+    int dimensao =
         m->portoesOk;
 
-    if (progresso < 0) {
-        progresso = 0;
+    if (dimensao < 0) {
+        dimensao = 0;
     }
 
     if (
-        progresso >
+        dimensao >
         META_PORTOES
     ) {
-        progresso =
+        dimensao =
             META_PORTOES;
     }
 
-    desenhaCeu(
-        &tema
-    );
+    bool transicaoAtiva =
+        dimensao > 0 &&
+        m->msgTempo > 0.0f &&
+        strstr(
+            m->msg,
+            "PORTAO ABERTO"
+        ) != NULL;
 
-    desenhaEstrelas(
+    if (!transicaoAtiva) {
+        desenhaDimensao(
+            m,
+            dimensao,
+            1.0f
+        );
+
+        return;
+    }
+
+    /*
+     * A dimensão nova é desenhada primeiro.
+     */
+    desenhaDimensao(
         m,
-        &tema
+        dimensao,
+        1.0f
     );
 
-    desenhaSol(
-        &tema,
-        progresso
-    );
+    /*
+     * A dimensão anterior desaparece gradualmente.
+     */
+    float progresso =
+        1.0f -
+        m->msgTempo /
+        1.8f;
 
-    desenhaNuvens(
+    progresso =
+        suavizaTransicao(
+            progresso
+        );
+
+    desenhaDimensao(
         m,
-        &tema
+        dimensao - 1,
+        1.0f -
+            progresso
     );
 
-    desenhaMontanhas(
-        m,
-        0.025f,
-        380,
-        135,
-        300,
-        tema.montanha1
-    );
+    /*
+     * Clarão no momento da passagem.
+     */
+    float centro =
+        1.0f -
+        fabsf(
+            progresso -
+            0.5f
+        ) *
+        2.0f;
 
-    desenhaMontanhas(
-        m,
-        0.055f,
-        410,
-        108,
-        230,
-        tema.montanha2
-    );
+    Color clarão =
+        {
+            225,
+            244,
+            255,
+            (unsigned char)(
+                60.0f *
+                centro
+            )
+        };
 
-    desenhaMontanhas(
-        m,
-        0.105f,
-        440,
-        78,
-        175,
-        tema.montanha3
-    );
-
-    desenhaEstruturasTecnologicas(
-        m,
-        &tema
-    );
-
-    desenhaChao(
-        m,
-        &tema
+    DrawRectangle(
+        0,
+        0,
+        LARGURA_TELA,
+        ALTURA_TELA,
+        clarão
     );
 }
+
 /* ============================================================
  * JOGADOR
  * ============================================================ */
@@ -1310,61 +4317,75 @@ static void desenhaDinossauroAbaixado(
     const Color escuro =
         COR_VERDE_ESCURO;
 
+    const Color barriga =
+        { 119, 228, 162, 255 };
+
     const Color contorno =
         { 20, 70, 57, 255 };
 
     /*
-     * Cauda.
+     * Cauda mais fina e alongada.
      */
     DrawTriangle(
         (Vector2){
-            r.x + 11.0f,
-            r.y + 10.0f
+            r.x + 10.0f,
+            r.y + 12.0f
         },
         (Vector2){
             r.x - 35.0f,
-            r.y + 18.0f
+            r.y + 19.0f
         },
         (Vector2){
-            r.x + 12.0f,
-            r.y + 25.0f
+            r.x + 11.0f,
+            r.y + 23.0f
         },
         escuro
     );
 
     DrawTriangle(
         (Vector2){
+            r.x + 8.0f,
+            r.y + 14.0f
+        },
+        (Vector2){
+            r.x - 29.0f,
+            r.y + 19.0f
+        },
+        (Vector2){
             r.x + 9.0f,
-            r.y + 13.0f
-        },
-        (Vector2){
-            r.x - 28.0f,
-            r.y + 18.0f
-        },
-        (Vector2){
-            r.x + 10.0f,
-            r.y + 21.0f
+            r.y + 20.0f
         },
         corpo
     );
 
     /*
-     * Corpo horizontal.
+     * Corpo horizontal mais estreito.
      */
     DrawEllipse(
         (int)(r.x + 18.0f),
         (int)(r.y + 17.0f),
-        29.0f,
-        15.0f,
+        23.0f,
+        12.5f,
         contorno
     );
 
     DrawEllipse(
         (int)(r.x + 19.0f),
-        (int)(r.y + 15.0f),
-        27.0f,
-        13.0f,
+        (int)(r.y + 15.5f),
+        21.0f,
+        10.5f,
         corpo
+    );
+
+    /*
+     * Barriga menor.
+     */
+    DrawEllipse(
+        (int)(r.x + 23.0f),
+        (int)(r.y + 18.0f),
+        8.0f,
+        7.0f,
+        barriga
     );
 
     /*
@@ -1372,10 +4393,10 @@ static void desenhaDinossauroAbaixado(
      */
     DrawRectangleRounded(
         (Rectangle){
-            r.x + 21.0f,
-            r.y + 3.0f,
-            22.0f,
-            21.0f
+            r.x + 22.0f,
+            r.y + 4.0f,
+            17.0f,
+            19.0f
         },
         0.35f,
         6,
@@ -1388,9 +4409,9 @@ static void desenhaDinossauroAbaixado(
     DrawRectangleRounded(
         (Rectangle){
             r.x + 30.0f,
-            r.y + 1.0f,
-            29.0f,
-            19.0f
+            r.y + 2.0f,
+            28.0f,
+            18.0f
         },
         0.28f,
         6,
@@ -1413,7 +4434,7 @@ static void desenhaDinossauroAbaixado(
     );
 
     /*
-     * Linha da mandíbula.
+     * Mandíbula.
      */
     DrawLineEx(
         (Vector2){
@@ -1456,14 +4477,30 @@ static void desenhaDinossauroAbaixado(
     );
 
     /*
+     * Braço curto.
+     */
+    DrawLineEx(
+        (Vector2){
+            r.x + 28.0f,
+            r.y + 17.0f
+        },
+        (Vector2){
+            r.x + 39.0f,
+            r.y + 22.0f
+        },
+        3.0f,
+        escuro
+    );
+
+    /*
      * Pernas recolhidas.
      */
     DrawRectangleRounded(
         (Rectangle){
-            r.x + 7.0f,
+            r.x + 8.0f,
             r.y + 22.0f,
-            16.0f,
-            7.0f
+            13.0f,
+            6.0f
         },
         0.35f,
         4,
@@ -1474,8 +4511,8 @@ static void desenhaDinossauroAbaixado(
         (Rectangle){
             r.x + 25.0f,
             r.y + 22.0f,
-            16.0f,
-            7.0f
+            13.0f,
+            6.0f
         },
         0.35f,
         4,
@@ -1537,25 +4574,25 @@ static void desenhaDinossauroEmPe(
      */
     float larguraSombra =
         comemorando
-            ? 27.0f -
+            ? 25.0f -
                 saltoVisual *
-                0.20f
+                0.18f
             : (
                 !m->noChao
-                    ? 20.0f
-                    : 38.0f
+                    ? 18.0f
+                    : 32.0f
             );
 
-    if (larguraSombra < 10.0f) {
+    if (larguraSombra < 9.0f) {
         larguraSombra =
-            10.0f;
+            9.0f;
     }
 
     DrawEllipse(
         (int)(r.x + 18.0f),
         (int)CHAO_Y + 3,
         larguraSombra,
-        6.0f,
+        5.0f,
         (Color){
             15,
             22,
@@ -1565,7 +4602,7 @@ static void desenhaDinossauroEmPe(
     );
 
     /*
-     * Cauda.
+     * Movimento da cauda.
      */
     float movimentoCauda =
         comemorando
@@ -1581,10 +4618,13 @@ static void desenhaDinossauroEmPe(
             ) *
                 3.0f;
 
+    /*
+     * Cauda mais fina.
+     */
     DrawTriangle(
         (Vector2){
-            r.x + 9.0f,
-            corpoY - 7.0f
+            r.x + 10.0f,
+            corpoY - 5.0f
         },
         (Vector2){
             r.x - 39.0f,
@@ -1593,85 +4633,91 @@ static void desenhaDinossauroEmPe(
         },
         (Vector2){
             r.x + 10.0f,
-            corpoY + 13.0f
+            corpoY + 10.0f
         },
         escuro
     );
 
     DrawTriangle(
         (Vector2){
-            r.x + 7.0f,
-            corpoY - 3.0f
+            r.x + 8.0f,
+            corpoY - 2.0f
         },
         (Vector2){
-            r.x - 32.0f,
+            r.x - 33.0f,
             corpoY +
                 movimentoCauda
         },
         (Vector2){
             r.x + 9.0f,
-            corpoY + 8.0f
+            corpoY + 6.0f
         },
         corpo
     );
 
     /*
-     * Corpo principal.
+     * Corpo mais fino.
+     *
+     * Antes ele usava aproximadamente 26 x 27.
+     * Agora utiliza 20 x 26.
      */
     DrawEllipse(
-        (int)(r.x + 16.0f),
+        (int)(r.x + 17.0f),
         (int)corpoY,
-        26.0f,
+        21.0f,
         27.0f,
         contorno
     );
 
     DrawEllipse(
-        (int)(r.x + 17.0f),
+        (int)(r.x + 18.0f),
         (int)(corpoY - 2.0f),
-        24.0f,
+        19.0f,
         25.0f,
         corpo
     );
 
     /*
-     * Barriga.
+     * Barriga menor.
      */
     DrawEllipse(
         (int)(r.x + 22.0f),
         (int)(corpoY + 5.0f),
-        11.0f,
-        16.0f,
+        8.0f,
+        15.0f,
         barriga
     );
 
     /*
-     * Pescoço.
+     * Pescoço mais fino.
      */
     DrawRectangleRounded(
         (Rectangle){
-            r.x + 20.0f,
+            r.x + 21.0f,
             corpoY - 34.0f,
-            19.0f,
-            41.0f
+            16.0f,
+            40.0f
         },
         0.42f,
         7,
         corpo
     );
 
+    /*
+     * Conexão entre corpo e pescoço.
+     */
     DrawTriangle(
         (Vector2){
-            r.x + 18.0f,
-            corpoY - 5.0f
+            r.x + 19.0f,
+            corpoY - 4.0f
         },
         (Vector2){
-            r.x + 36.0f,
+            r.x + 35.0f,
             corpoY - 34.0f
         },
         (Vector2){
-            r.x + 39.0f,
-            corpoY + 2.0f
+            r.x + 37.0f,
+            corpoY + 1.0f
         },
         corpo
     );
@@ -1784,24 +4830,23 @@ static void desenhaDinossauroEmPe(
             corpoY - 10.0f
         },
         (Vector2){
-            r.x + 42.0f,
+            r.x + 41.0f,
             bracoFrenteY
         },
-        4.0f,
+        3.5f,
         corpo
     );
 
     DrawLineEx(
         (Vector2){
-            r.x + 42.0f,
+            r.x + 41.0f,
             bracoFrenteY
         },
         (Vector2){
-            r.x + 49.0f,
-            bracoFrenteY -
-                2.0f
+            r.x + 48.0f,
+            bracoFrenteY - 2.0f
         },
-        2.5f,
+        2.3f,
         corpo
     );
 
@@ -1811,10 +4856,10 @@ static void desenhaDinossauroEmPe(
             corpoY - 8.0f
         },
         (Vector2){
-            r.x + 8.0f,
+            r.x + 9.0f,
             bracoTrasY
         },
-        4.0f,
+        3.5f,
         escuro
     );
 
@@ -1827,53 +4872,53 @@ static void desenhaDinossauroEmPe(
     ) {
         DrawLineEx(
             (Vector2){
-                r.x + 8.0f,
+                r.x + 9.0f,
                 corpoY + 17.0f
             },
             (Vector2){
-                r.x + 2.0f,
+                r.x + 3.0f,
                 corpoY + 30.0f
             },
-            9.0f,
+            7.5f,
             escuro
         );
 
         DrawLineEx(
             (Vector2){
-                r.x + 2.0f,
+                r.x + 3.0f,
                 corpoY + 30.0f
             },
             (Vector2){
                 r.x + 15.0f,
                 corpoY + 34.0f
             },
-            6.0f,
+            5.5f,
             escuro
         );
 
         DrawLineEx(
             (Vector2){
-                r.x + 26.0f,
+                r.x + 25.0f,
                 corpoY + 16.0f
             },
             (Vector2){
-                r.x + 34.0f,
+                r.x + 33.0f,
                 corpoY + 28.0f
             },
-            9.0f,
+            7.5f,
             corpo
         );
 
         DrawLineEx(
             (Vector2){
-                r.x + 34.0f,
+                r.x + 33.0f,
                 corpoY + 28.0f
             },
             (Vector2){
-                r.x + 46.0f,
+                r.x + 45.0f,
                 corpoY + 24.0f
             },
-            6.0f,
+            5.5f,
             corpo
         );
     } else {
@@ -1903,37 +4948,37 @@ static void desenhaDinossauroEmPe(
 
         DrawLineEx(
             (Vector2){
-                r.x + 9.0f,
+                r.x + 10.0f,
                 corpoY + 17.0f
             },
             (Vector2){
-                r.x + 7.0f +
+                r.x + 8.0f +
                     tras,
                 joelhoY
             },
-            9.0f,
+            7.5f,
             escuro
         );
 
         DrawLineEx(
             (Vector2){
-                r.x + 7.0f +
+                r.x + 8.0f +
                     tras,
                 joelhoY
             },
             (Vector2){
-                r.x + 10.0f -
+                r.x + 11.0f -
                     tras *
                     0.45f,
                 peY
             },
-            6.0f,
+            5.5f,
             escuro
         );
 
         DrawLineEx(
             (Vector2){
-                r.x + 7.0f -
+                r.x + 8.0f -
                     tras *
                     0.45f,
                 peY
@@ -1944,54 +4989,54 @@ static void desenhaDinossauroEmPe(
                     0.45f,
                 peY
             },
-            5.0f,
+            4.5f,
             escuro
         );
 
         DrawLineEx(
             (Vector2){
-                r.x + 26.0f,
+                r.x + 24.0f,
                 corpoY + 16.0f
             },
             (Vector2){
-                r.x + 28.0f +
+                r.x + 27.0f +
                     frente,
                 joelhoY
             },
-            9.0f,
+            7.5f,
             corpo
         );
 
         DrawLineEx(
             (Vector2){
-                r.x + 28.0f +
+                r.x + 27.0f +
                     frente,
                 joelhoY
             },
             (Vector2){
-                r.x + 30.0f -
+                r.x + 29.0f -
                     frente *
                     0.45f,
                 peY
             },
-            6.0f,
+            5.5f,
             corpo
         );
 
         DrawLineEx(
             (Vector2){
-                r.x + 28.0f -
+                r.x + 27.0f -
                     frente *
                     0.45f,
                 peY
             },
             (Vector2){
-                r.x + 45.0f -
+                r.x + 43.0f -
                     frente *
                     0.45f,
                 peY
             },
-            5.0f,
+            4.5f,
             corpo
         );
     }
@@ -2297,6 +5342,13 @@ static void desenhaAndarilho(
     Rectangle r =
         e->caixa;
 
+    bool passo =
+        ((int)(e->anim * 9.0f) % 2) == 0;
+
+    float balanco =
+        sinf(e->anim * 9.0f) *
+        1.5f;
+
     Color corpo =
         e->vida >= 2
             ? COR_ROXO
@@ -2307,9 +5359,33 @@ static void desenhaAndarilho(
                 255
             };
 
+    Color corpoClaro =
+        e->vida >= 2
+            ? (Color){
+                205,
+                133,
+                245,
+                255
+            }
+            : (Color){
+                238,
+                172,
+                250,
+                255
+            };
+
     Color escuro =
         { 91, 45, 130, 255 };
 
+    Color contorno =
+        { 58, 31, 84, 255 };
+
+    Color boca =
+        { 50, 25, 66, 255 };
+
+    /*
+     * Sombra.
+     */
     DrawEllipse(
         (int)(
             r.x +
@@ -2318,10 +5394,11 @@ static void desenhaAndarilho(
         ),
         (int)(
             r.y +
-            r.height
+            r.height +
+            2.0f
         ),
         r.width *
-            0.65f,
+            0.70f,
         5.0f,
         (Color){
             20,
@@ -2331,72 +5408,420 @@ static void desenhaAndarilho(
         }
     );
 
-    DrawRectangleRounded(
-        r,
-        0.35f,
-        7,
-        corpo
+    /*
+     * Chifres.
+     */
+    DrawTriangle(
+        (Vector2){
+            r.x + 5.0f,
+            r.y + 8.0f +
+                balanco
+        },
+        (Vector2){
+            r.x + 8.0f,
+            r.y - 9.0f +
+                balanco
+        },
+        (Vector2){
+            r.x + 16.0f,
+            r.y + 7.0f +
+                balanco
+        },
+        (Color){
+            245,
+            210,
+            126,
+            255
+        }
     );
 
-    DrawRectangle(
-        (int)r.x + 5,
-        (int)(
-            r.y +
-            r.height -
-            8.0f
-        ),
-        (int)r.width -
-            10,
-        8,
+    DrawTriangle(
+        (Vector2){
+            r.x +
+                r.width -
+                16.0f,
+            r.y + 7.0f +
+                balanco
+        },
+        (Vector2){
+            r.x +
+                r.width -
+                8.0f,
+            r.y - 10.0f +
+                balanco
+        },
+        (Vector2){
+            r.x +
+                r.width -
+                4.0f,
+            r.y + 9.0f +
+                balanco
+        },
+        (Color){
+            245,
+            210,
+            126,
+            255
+        }
+    );
+
+    /*
+     * Orelhas laterais.
+     */
+    DrawTriangle(
+        (Vector2){
+            r.x + 3.0f,
+            r.y + 14.0f
+        },
+        (Vector2){
+            r.x - 9.0f,
+            r.y + 20.0f
+        },
+        (Vector2){
+            r.x + 4.0f,
+            r.y + 27.0f
+        },
         escuro
     );
 
+    DrawTriangle(
+        (Vector2){
+            r.x +
+                r.width -
+                3.0f,
+            r.y + 14.0f
+        },
+        (Vector2){
+            r.x +
+                r.width +
+                9.0f,
+            r.y + 20.0f
+        },
+        (Vector2){
+            r.x +
+                r.width -
+                4.0f,
+            r.y + 27.0f
+        },
+        escuro
+    );
+
+    /*
+     * Corpo com contorno.
+     */
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x - 2.0f,
+            r.y + balanco,
+            r.width + 4.0f,
+            r.height
+        },
+        0.36f,
+        8,
+        contorno
+    );
+
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + 1.0f,
+            r.y + 2.0f +
+                balanco,
+            r.width - 2.0f,
+            r.height - 4.0f
+        },
+        0.36f,
+        8,
+        corpo
+    );
+
+    /*
+     * Mancha clara central.
+     */
+    DrawEllipse(
+        (int)(
+            r.x +
+            r.width /
+            2.0f
+        ),
+        (int)(
+            r.y +
+            r.height *
+            0.62f +
+            balanco
+        ),
+        r.width *
+            0.29f,
+        r.height *
+            0.31f,
+        corpoClaro
+    );
+
+    /*
+     * Sobrancelhas inclinadas.
+     */
+    DrawLineEx(
+        (Vector2){
+            r.x + 7.0f,
+            r.y + 10.0f +
+                balanco
+        },
+        (Vector2){
+            r.x + 18.0f,
+            r.y + 14.0f +
+                balanco
+        },
+        3.0f,
+        contorno
+    );
+
+    DrawLineEx(
+        (Vector2){
+            r.x +
+                r.width -
+                7.0f,
+            r.y + 10.0f +
+                balanco
+        },
+        (Vector2){
+            r.x +
+                r.width -
+                18.0f,
+            r.y + 14.0f +
+                balanco
+        },
+        3.0f,
+        contorno
+    );
+
+    /*
+     * Olhos.
+     */
     DrawCircle(
         (int)r.x + 13,
-        (int)r.y + 15,
+        (int)(
+            r.y +
+            18.0f +
+            balanco
+        ),
         7.0f,
         WHITE
     );
 
     DrawCircle(
-        (int)r.x + 29,
-        (int)r.y + 15,
+        (int)(
+            r.x +
+            r.width -
+            13.0f
+        ),
+        (int)(
+            r.y +
+            18.0f +
+            balanco
+        ),
         7.0f,
         WHITE
     );
 
     DrawCircle(
         (int)r.x + 15,
-        (int)r.y + 16,
-        3.0f,
+        (int)(
+            r.y +
+            19.0f +
+            balanco
+        ),
+        3.2f,
         COR_PAINEL
     );
 
     DrawCircle(
-        (int)r.x + 27,
-        (int)r.y + 16,
-        3.0f,
+        (int)(
+            r.x +
+            r.width -
+            15.0f
+        ),
+        (int)(
+            r.y +
+            19.0f +
+            balanco
+        ),
+        3.2f,
         COR_PAINEL
     );
 
-    DrawRectangle(
-        (int)r.x + 10,
-        (int)(
+    /*
+     * Boca.
+     */
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + 10.0f,
+            r.y + 28.0f +
+                balanco,
+            r.width - 20.0f,
+            10.0f
+        },
+        0.45f,
+        6,
+        boca
+    );
+
+    /*
+     * Dentes.
+     */
+    DrawTriangle(
+        (Vector2){
+            r.x + 14.0f,
+            r.y + 28.0f +
+                balanco
+        },
+        (Vector2){
+            r.x + 20.0f,
+            r.y + 28.0f +
+                balanco
+        },
+        (Vector2){
+            r.x + 17.0f,
+            r.y + 34.0f +
+                balanco
+        },
+        WHITE
+    );
+
+    DrawTriangle(
+        (Vector2){
+            r.x +
+                r.width -
+                20.0f,
+            r.y + 28.0f +
+                balanco
+        },
+        (Vector2){
+            r.x +
+                r.width -
+                14.0f,
+            r.y + 28.0f +
+                balanco
+        },
+        (Vector2){
+            r.x +
+                r.width -
+                17.0f,
+            r.y + 34.0f +
+                balanco
+        },
+        WHITE
+    );
+
+    /*
+     * Braços curtos.
+     */
+    float braco =
+        passo
+            ? 3.0f
+            : -2.0f;
+
+    DrawLineEx(
+        (Vector2){
+            r.x + 4.0f,
+            r.y + 27.0f
+        },
+        (Vector2){
+            r.x - 7.0f,
+            r.y + 33.0f +
+                braco
+        },
+        5.0f,
+        escuro
+    );
+
+    DrawLineEx(
+        (Vector2){
+            r.x +
+                r.width -
+                4.0f,
+            r.y + 27.0f
+        },
+        (Vector2){
+            r.x +
+                r.width +
+                7.0f,
+            r.y + 33.0f -
+                braco
+        },
+        5.0f,
+        escuro
+    );
+
+    /*
+     * Pernas e pés alternados.
+     */
+    int pernaEsquerda =
+        passo
+            ? 2
+            : 6;
+
+    int pernaDireita =
+        passo
+            ? 6
+            : 2;
+
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + 7.0f,
             r.y +
-            r.height
-        ),
-        8,
+                r.height -
+                5.0f,
+            10.0f,
+            7.0f +
+                pernaEsquerda
+        },
+        0.35f,
         4,
         escuro
     );
 
-    DrawRectangle(
-        (int)r.x + 25,
-        (int)(
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x +
+                r.width -
+                17.0f,
             r.y +
-            r.height
-        ),
-        8,
+                r.height -
+                5.0f,
+            10.0f,
+            7.0f +
+                pernaDireita
+        },
+        0.35f,
+        4,
+        escuro
+    );
+
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x + 3.0f,
+            r.y +
+                r.height +
+                pernaEsquerda,
+            17.0f,
+            5.0f
+        },
+        0.4f,
+        4,
+        escuro
+    );
+
+    DrawRectangleRounded(
+        (Rectangle){
+            r.x +
+                r.width -
+                20.0f,
+            r.y +
+                r.height +
+                pernaDireita,
+            17.0f,
+            5.0f
+        },
+        0.4f,
         4,
         escuro
     );
@@ -2408,108 +5833,539 @@ static void desenhaVoador(
     Rectangle r =
         e->caixa;
 
-    bool asaAlta =
-        (
-            (int)(
-                e->anim *
-                10.0f
-            ) %
-            2
-        ) ==
-        0;
+    /*
+     * cicloAsa varia continuamente entre -1 e 1.
+     *
+     * Valores positivos:
+     * asa levantada.
+     *
+     * Valores negativos:
+     * asa abaixada.
+     */
+    float cicloAsa =
+        sinf(
+            e->anim *
+            11.0f
+        );
+
+    float cicloAsaSecundaria =
+        sinf(
+            e->anim *
+            11.0f +
+            0.45f
+        );
+
+    float oscilacaoCorpo =
+        sinf(
+            e->anim *
+            5.0f
+        ) *
+        1.5f;
 
     Color corpo =
         COR_LARANJA;
 
+    Color corpoClaro =
+        { 255, 177, 91, 255 };
+
     Color asa =
-        { 255, 180, 89, 255 };
+        { 255, 197, 99, 255 };
 
-    Color escuro =
-        { 130, 58, 42, 255 };
+    Color asaEscura =
+        { 201, 81, 49, 255 };
 
+    Color contorno =
+        { 114, 53, 47, 255 };
+
+    Color bico =
+        { 255, 216, 72, 255 };
+
+    float centroX =
+        r.x +
+        r.width *
+        0.52f;
+
+    float centroY =
+        r.y +
+        r.height *
+        0.52f +
+        oscilacaoCorpo;
+
+    /*
+     * A ponta da asa percorre aproximadamente 38 pixels entre
+     * a posição mais alta e a posição mais baixa.
+     */
+    float pontaAsaY =
+        centroY -
+        cicloAsa *
+        19.0f;
+
+    float pontaAsaTraseiraY =
+        centroY -
+        cicloAsaSecundaria *
+        13.0f;
+
+    /*
+     * Inclinação horizontal deixa a asa menos rígida.
+     */
+    float pontaAsaX =
+        centroX +
+        2.0f +
+        fabsf(cicloAsa) *
+        4.0f;
+
+    /*
+     * Sombra aérea.
+     */
     DrawEllipse(
-        (int)(
-            r.x +
-            r.width /
-            2.0f
-        ),
+        (int)centroX,
         (int)(
             r.y +
-            r.height /
-            2.0f
+            r.height +
+            11.0f
         ),
         r.width *
-            0.5f,
-        r.height *
-            0.5f,
-        corpo
+            0.42f,
+        3.0f,
+        (Color){
+            22,
+            27,
+            37,
+            75
+        }
     );
 
-    DrawTriangle(
-        (Vector2){
-            r.x + 14.0f,
-            r.y +
-                r.height /
-                2.0f
-        },
-        (Vector2){
-            r.x + 25.0f,
-            r.y +
-                (
-                    asaAlta
-                        ? -16.0f
-                        : 12.0f
-                )
-        },
-        (Vector2){
-            r.x + 37.0f,
-            r.y +
-                r.height /
-                2.0f
-        },
-        asa
-    );
-
+    /*
+     * Cauda.
+     */
     DrawTriangle(
         (Vector2){
             r.x +
                 r.width -
-                2.0f,
-            r.y +
-                r.height *
-                0.32f
+                8.0f,
+            centroY - 4.0f
         },
         (Vector2){
             r.x +
                 r.width +
-                12.0f,
-            r.y +
-                r.height *
-                0.5f
+                18.0f,
+            centroY - 11.0f
         },
         (Vector2){
             r.x +
                 r.width -
-                2.0f,
-            r.y +
-                r.height *
-                0.68f
+                3.0f,
+            centroY + 2.0f
         },
-        escuro
+        asaEscura
+    );
+
+    DrawTriangle(
+        (Vector2){
+            r.x +
+                r.width -
+                6.0f,
+            centroY
+        },
+        (Vector2){
+            r.x +
+                r.width +
+                21.0f,
+            centroY + 2.0f
+        },
+        (Vector2){
+            r.x +
+                r.width -
+                4.0f,
+            centroY + 7.0f
+        },
+        corpoClaro
+    );
+
+    DrawTriangle(
+        (Vector2){
+            r.x +
+                r.width -
+                8.0f,
+            centroY + 4.0f
+        },
+        (Vector2){
+            r.x +
+                r.width +
+                16.0f,
+            centroY + 13.0f
+        },
+        (Vector2){
+            r.x +
+                r.width -
+                4.0f,
+            centroY + 8.0f
+        },
+        asaEscura
+    );
+
+    /*
+     * Asa traseira. É desenhada antes do corpo.
+     */
+    DrawTriangle(
+        (Vector2){
+            centroX + 1.0f,
+            centroY - 1.0f
+        },
+        (Vector2){
+            centroX + 12.0f,
+            pontaAsaTraseiraY
+        },
+        (Vector2){
+            centroX + 19.0f,
+            centroY + 6.0f
+        },
+        asaEscura
+    );
+
+    DrawTriangle(
+        (Vector2){
+            centroX + 4.0f,
+            centroY
+        },
+        (Vector2){
+            centroX + 11.0f,
+            pontaAsaTraseiraY + 3.0f
+        },
+        (Vector2){
+            centroX + 16.0f,
+            centroY + 4.0f
+        },
+        corpo
+    );
+
+    /*
+     * Corpo com contorno.
+     */
+    DrawEllipse(
+        (int)centroX,
+        (int)centroY,
+        r.width *
+            0.52f,
+        r.height *
+            0.53f,
+        contorno
+    );
+
+    DrawEllipse(
+        (int)(
+            centroX -
+            1.0f
+        ),
+        (int)(
+            centroY -
+            1.0f
+        ),
+        r.width *
+            0.46f,
+        r.height *
+            0.47f,
+        corpo
+    );
+
+    /*
+     * Barriga.
+     */
+    DrawEllipse(
+        (int)(
+            centroX -
+            4.0f
+        ),
+        (int)(
+            centroY +
+            3.0f
+        ),
+        r.width *
+            0.25f,
+        r.height *
+            0.30f,
+        corpoClaro
+    );
+
+    /*
+     * Asa principal animada.
+     *
+     * A asa possui três triângulos sobrepostos. Isso cria uma
+     * aparência de penas e deixa a batida mais evidente.
+     */
+    DrawTriangle(
+        (Vector2){
+            centroX - 4.0f,
+            centroY
+        },
+        (Vector2){
+            pontaAsaX,
+            pontaAsaY -
+                8.0f
+        },
+        (Vector2){
+            centroX + 15.0f,
+            centroY + 6.0f
+        },
+        contorno
+    );
+
+    DrawTriangle(
+        (Vector2){
+            centroX - 2.0f,
+            centroY
+        },
+        (Vector2){
+            pontaAsaX,
+            pontaAsaY -
+                5.0f
+        },
+        (Vector2){
+            centroX + 13.0f,
+            centroY + 4.0f
+        },
+        asaEscura
+    );
+
+    DrawTriangle(
+        (Vector2){
+            centroX,
+            centroY
+        },
+        (Vector2){
+            pontaAsaX + 1.0f,
+            pontaAsaY
+        },
+        (Vector2){
+            centroX + 10.0f,
+            centroY + 3.0f
+        },
+        asa
+    );
+
+    /*
+     * Linhas das penas acompanham o movimento da asa.
+     */
+    DrawLineEx(
+        (Vector2){
+            centroX + 2.0f,
+            centroY
+        },
+        (Vector2){
+            pontaAsaX,
+            pontaAsaY + 1.0f
+        },
+        1.5f,
+        corpoClaro
+    );
+
+    DrawLineEx(
+        (Vector2){
+            centroX + 5.0f,
+            centroY + 2.0f
+        },
+        (Vector2){
+            pontaAsaX + 5.0f,
+            pontaAsaY + 6.0f
+        },
+        1.3f,
+        corpoClaro
+    );
+
+    /*
+     * Cabeça.
+     */
+    DrawCircle(
+        (int)(
+            r.x +
+            11.0f
+        ),
+        (int)(
+            centroY -
+            5.0f
+        ),
+        11.0f,
+        contorno
     );
 
     DrawCircle(
-        (int)r.x + 10,
-        (int)r.y + 9,
-        5.0f,
+        (int)(
+            r.x +
+            11.0f
+        ),
+        (int)(
+            centroY -
+            6.0f
+        ),
+        9.2f,
+        corpo
+    );
+
+    /*
+     * Topete.
+     */
+    DrawTriangle(
+        (Vector2){
+            r.x + 7.0f,
+            centroY - 13.0f
+        },
+        (Vector2){
+            r.x + 8.0f,
+            centroY - 24.0f
+        },
+        (Vector2){
+            r.x + 13.0f,
+            centroY - 14.0f
+        },
+        asaEscura
+    );
+
+    DrawTriangle(
+        (Vector2){
+            r.x + 11.0f,
+            centroY - 14.0f
+        },
+        (Vector2){
+            r.x + 16.0f,
+            centroY - 22.0f
+        },
+        (Vector2){
+            r.x + 16.0f,
+            centroY - 11.0f
+        },
+        corpoClaro
+    );
+
+    /*
+     * Bico.
+     */
+    DrawTriangle(
+        (Vector2){
+            r.x + 4.0f,
+            centroY - 7.0f
+        },
+        (Vector2){
+            r.x - 12.0f,
+            centroY - 1.0f
+        },
+        (Vector2){
+            r.x + 4.0f,
+            centroY + 2.0f
+        },
+        bico
+    );
+
+    DrawLineEx(
+        (Vector2){
+            r.x - 10.0f,
+            centroY - 1.0f
+        },
+        (Vector2){
+            r.x + 3.0f,
+            centroY - 1.0f
+        },
+        1.3f,
+        contorno
+    );
+
+    /*
+     * Olho.
+     */
+    DrawCircle(
+        (int)(
+            r.x +
+            9.0f
+        ),
+        (int)(
+            centroY -
+            8.0f
+        ),
+        4.6f,
         WHITE
     );
 
     DrawCircle(
-        (int)r.x + 9,
-        (int)r.y + 9,
-        2.0f,
+        (int)(
+            r.x +
+            7.8f
+        ),
+        (int)(
+            centroY -
+            8.0f
+        ),
+        2.3f,
         COR_PAINEL
+    );
+
+    /*
+     * Sobrancelha.
+     */
+    DrawLineEx(
+        (Vector2){
+            r.x + 4.0f,
+            centroY - 13.0f
+        },
+        (Vector2){
+            r.x + 13.0f,
+            centroY - 14.0f
+        },
+        1.8f,
+        contorno
+    );
+
+    /*
+     * Pernas recolhidas.
+     */
+    DrawLineEx(
+        (Vector2){
+            centroX - 4.0f,
+            centroY + 9.0f
+        },
+        (Vector2){
+            centroX - 7.0f,
+            centroY + 16.0f
+        },
+        2.5f,
+        contorno
+    );
+
+    DrawLineEx(
+        (Vector2){
+            centroX + 5.0f,
+            centroY + 9.0f
+        },
+        (Vector2){
+            centroX + 8.0f,
+            centroY + 16.0f
+        },
+        2.5f,
+        contorno
+    );
+
+    DrawLineEx(
+        (Vector2){
+            centroX - 11.0f,
+            centroY + 16.0f
+        },
+        (Vector2){
+            centroX - 4.0f,
+            centroY + 16.0f
+        },
+        2.0f,
+        bico
+    );
+
+    DrawLineEx(
+        (Vector2){
+            centroX + 5.0f,
+            centroY + 16.0f
+        },
+        (Vector2){
+            centroX + 12.0f,
+            centroY + 16.0f
+        },
+        2.0f,
+        bico
     );
 }
 
